@@ -1,20 +1,18 @@
-"""RS256 JWT verification and camera-scoped FastAPI authorization."""
+"""HS256 JWT verification and camera-scoped FastAPI authorization."""
 
-import base64
-import binascii
 import os
 from functools import lru_cache
 from typing import Any, Dict, Iterable, List, Optional, Set, Union
 from uuid import UUID
 
 import jwt
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-JWT_ALGORITHM = "RS256"
-JWT_ISSUER = "traffic-camera-api"
+CAMERA_JWT_ALGORITHM = "HS256"
+CAMERA_JWT_ISSUER = "traffic-camera-api"
+DEFAULT_CAMERA_SECRET = "traffic-camera-demo-secret-key-8371946"
+
 security = HTTPBearer(auto_error=False)
 
 
@@ -27,39 +25,30 @@ class CameraToken:
 
 
 @lru_cache
-def _public_key_pem() -> bytes:
-    """Load the verification key from the environment without writing it to disk."""
-    encoded_key = os.environ.get("JWT_PUBLIC_KEY_B64")
-    if not encoded_key:
+def get_camera_jwt_secret() -> str:
+    """Load the camera signing/verification secret string from the environment."""
+    secret = os.environ.get("CAMERA_JWT_SECRET") or os.environ.get("JWT_SECRET")
+    if not secret:
         try:
+            from pathlib import Path
             from dotenv import find_dotenv, load_dotenv
 
             env_file = find_dotenv(usecwd=True)
             if env_file:
                 load_dotenv(env_file)
-            encoded_key = os.environ.get("JWT_PUBLIC_KEY_B64")
+            else:
+                project_dir = Path(__file__).resolve().parents[2]
+                load_dotenv(project_dir / ".env")
+            secret = os.environ.get("CAMERA_JWT_SECRET") or os.environ.get("JWT_SECRET")
         except ImportError:
             pass
 
-    if not encoded_key:
-        raise RuntimeError("JWT_PUBLIC_KEY_B64 must be set before starting the API")
-
-    try:
-        pem = base64.b64decode(encoded_key, validate=True)
-        key = serialization.load_pem_public_key(pem)
-    except (binascii.Error, ValueError) as error:
-        raise RuntimeError(
-            "JWT_PUBLIC_KEY_B64 must be valid base64 PEM for an RSA public key"
-        ) from error
-
-    if not isinstance(key, RSAPublicKey):
-        raise RuntimeError("JWT_PUBLIC_KEY_B64 must contain an RSA public key")
-    return pem
+    return secret or DEFAULT_CAMERA_SECRET
 
 
 def validate_jwt_configuration() -> None:
-    """Fail application startup early when the verification key is unavailable."""
-    _public_key_pem()
+    """Ensure camera JWT secret is accessible."""
+    get_camera_jwt_secret()
 
 
 def normalize_camera_ids(camera_ids: Iterable[Union[str, UUID]]) -> List[str]:
@@ -88,9 +77,9 @@ def get_current_camera_token(
     try:
         payload: Dict[str, Any] = jwt.decode(
             credentials.credentials,
-            _public_key_pem(),
-            algorithms=[JWT_ALGORITHM],
-            issuer=JWT_ISSUER,
+            get_camera_jwt_secret(),
+            algorithms=[CAMERA_JWT_ALGORITHM],
+            issuer=CAMERA_JWT_ISSUER,
             options={"require": ["sub", "iss", "iat", "exp", "authorized_camera_ids"]},
         )
         camera_ids = normalize_camera_ids(payload["authorized_camera_ids"])
@@ -111,3 +100,23 @@ def require_camera_access(
             detail="Token is not authorized for this camera",
         )
     return token
+
+
+def get_current_camera_token_optional(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+) -> Optional[CameraToken]:
+    """Extract CameraToken if present and valid; otherwise return None without raising."""
+    if credentials is None:
+        return None
+    try:
+        payload: Dict[str, Any] = jwt.decode(
+            credentials.credentials,
+            get_camera_jwt_secret(),
+            algorithms=[CAMERA_JWT_ALGORITHM],
+            issuer=CAMERA_JWT_ISSUER,
+            options={"require": ["sub", "iss", "iat", "exp", "authorized_camera_ids"]},
+        )
+        camera_ids = normalize_camera_ids(payload["authorized_camera_ids"])
+        return CameraToken(subject=payload["sub"], camera_ids=set(camera_ids))
+    except (jwt.PyJWTError, KeyError, TypeError, ValueError):
+        return None

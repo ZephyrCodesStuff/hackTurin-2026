@@ -13,6 +13,9 @@ import {
   RefreshCw,
   Gauge,
   Circle,
+  Pencil,
+  BarChart3,
+  ScrollText,
 } from "lucide-react";
 import { Camera, CameraEvent, CrashEvent } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +29,7 @@ interface CameraEventsPaneProps {
   isLoading: boolean;
   onClose: () => void;
   onRefresh: () => void;
+  onEditCamera?: (camera: Camera) => void;
 }
 
 type EventFilter = "all" | "crash" | "light_change" | "illegal_crossing" | "object_detected";
@@ -36,7 +40,9 @@ export function CameraEventsPane({
   isLoading,
   onClose,
   onRefresh,
+  onEditCamera,
 }: CameraEventsPaneProps) {
+  const [viewMode, setViewMode] = useState<"logs" | "metrics">("logs");
   const [filter, setFilter] = useState<EventFilter>("all");
   const [isMinimized, setIsMinimized] = useState(false);
   const [activePhoto, setActivePhoto] = useState<{
@@ -55,6 +61,20 @@ export function CameraEventsPane({
   const lightCount = events.filter((e) => e.type === "light_change").length;
   const crossingCount = events.filter((e) => e.type === "illegal_crossing").length;
   const objectsCount = events.filter((e) => e.type === "object_detected").length;
+
+  // Metric derivations
+  const pedestrianCount = events.filter(
+    (e) => (e.type === "object_detected" || e.type === "illegal_crossing") && e.entity_type === "pedestrian"
+  ).length;
+  const vehicleCount = events.filter(
+    (e) =>
+      e.type === "object_detected" &&
+      (e.entity_type === "car" ||
+        e.entity_type === "truck" ||
+        e.entity_type === "motorbike" ||
+        e.entity_type === "bike")
+  ).length;
+  const dangerLevel = crashesCount >= 3 ? "CRITICAL" : crashesCount >= 1 ? "ELEVATED" : "NORMAL";
 
   const latLonString = Array.isArray(camera.location)
     ? `${camera.location[0].toFixed(4)}, ${camera.location[1].toFixed(4)}`
@@ -100,6 +120,18 @@ export function CameraEventsPane({
 
           {/* Header Controls */}
           <div className="flex items-center gap-1.5">
+            {onEditCamera && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onEditCamera(camera)}
+                title="Edit camera settings"
+                className="h-8 px-2 text-[#6b675f] hover:text-[#20808d]"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                <span className="ml-1.5 hidden text-xs sm:inline">Edit</span>
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -141,66 +173,207 @@ export function CameraEventsPane({
         {/* Pane Body (Hidden when minimized) */}
         {!isMinimized && (
           <div className="flex flex-1 flex-col overflow-hidden">
-            {/* Filter Tabs */}
-            <div className="flex items-center gap-1 border-b border-[#e7e5e0] bg-[#f5f4ef] px-5 py-1.5 text-xs">
-              <button
-                onClick={() => setFilter("all")}
-                className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
-                  filter === "all"
-                    ? "bg-[#20808d]/10 text-[#20808d]"
-                    : "text-[#6b675f] hover:text-[#1f1915]"
-                }`}
-              >
-                All Events ({events.length})
-              </button>
-              <button
-                onClick={() => setFilter("crash")}
-                className={`flex items-center gap-1 rounded-md px-2.5 py-1 font-medium transition-colors ${
-                  filter === "crash"
-                    ? "bg-[#c25450]/10 text-[#a8423e] border border-[#c25450]/30"
-                    : "text-[#6b675f] hover:text-[#1f1915]"
-                }`}
-              >
-                <AlertTriangle className="h-3 w-3 text-[#c25450]" />
-                Crashes ({crashesCount})
-              </button>
-              <button
-                onClick={() => setFilter("light_change")}
-                className={`flex items-center gap-1 rounded-md px-2.5 py-1 font-medium transition-colors ${
-                  filter === "light_change"
-                    ? "bg-[#c08a2d]/10 text-[#9a6e22] border border-[#c08a2d]/30"
-                    : "text-[#6b675f] hover:text-[#1f1915]"
-                }`}
-              >
-                <Activity className="h-3 w-3 text-[#c08a2d]" />
-                Signal Changes ({lightCount})
-              </button>
-              <button
-                onClick={() => setFilter("illegal_crossing")}
-                className={`flex items-center gap-1 rounded-md px-2.5 py-1 font-medium transition-colors ${
-                  filter === "illegal_crossing"
-                    ? "bg-[#8c6ba8]/10 text-[#6f5090] border border-[#8c6ba8]/30"
-                    : "text-[#6b675f] hover:text-[#1f1915]"
-                }`}
-              >
-                <Footprints className="h-3 w-3 text-[#8c6ba8]" />
-                Crossings ({crossingCount})
-              </button>
-              <button
-                onClick={() => setFilter("object_detected")}
-                className={`flex items-center gap-1 rounded-md px-2.5 py-1 font-medium transition-colors ${
-                  filter === "object_detected"
-                    ? "bg-[#20808d]/10 text-[#20808d] border border-[#20808d]/30"
-                    : "text-[#6b675f] hover:text-[#1f1915]"
-                }`}
-              >
-                <Radio className="h-3 w-3 text-[#20808d]" />
-                Detections ({objectsCount})
-              </button>
+            {/* Top Toolbar / Mode Selectors & Filters */}
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#e7e5e0] bg-[#f5f4ef] px-5 py-1.5 text-xs">
+              <div className="flex items-center gap-1">
+                {/* 1. General Metrics Overview Button (WIP) */}
+                <button
+                  onClick={() => setViewMode("metrics")}
+                  title="General metrics overview (WIP)"
+                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 font-medium transition-colors ${
+                    viewMode === "metrics"
+                      ? "bg-[#20808d] text-white shadow-xs"
+                      : "text-[#6b675f] hover:bg-[#e7e5e0]/60 hover:text-[#1f1915]"
+                  }`}
+                >
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  <span>Metrics</span>
+                  <span
+                    className={`rounded px-1 py-0.2 text-[9px] font-bold uppercase tracking-wider ${
+                      viewMode === "metrics"
+                        ? "bg-white/20 text-white"
+                        : "bg-[#8a857c]/15 text-[#8a857c]"
+                    }`}
+                  >
+                    WIP
+                  </span>
+                </button>
+
+                {/* 2. Event Logs View Button */}
+                <button
+                  onClick={() => {
+                    setViewMode("logs");
+                  }}
+                  title="Event logs (crashes, signal changes, crossings, detections)"
+                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 font-medium transition-colors ${
+                    viewMode === "logs"
+                      ? "bg-[#20808d] text-white shadow-xs"
+                      : "text-[#6b675f] hover:bg-[#e7e5e0]/60 hover:text-[#1f1915]"
+                  }`}
+                >
+                  <ScrollText className="h-3.5 w-3.5" />
+                  <span>Logs</span>
+                  <span
+                    className={`rounded-full px-1.5 py-0.2 text-[10px] font-mono ${
+                      viewMode === "logs"
+                        ? "bg-white/20 text-white"
+                        : "bg-[#8a857c]/15 text-[#6b675f]"
+                    }`}
+                  >
+                    {events.length}
+                  </span>
+                </button>
+              </div>
+
+              {/* Log Subfilters (Visible when in Logs mode) */}
+              {viewMode === "logs" && (
+                <div className="flex items-center gap-1 overflow-x-auto">
+                  <span className="text-[#8a857c] mr-1 hidden sm:inline">Filter:</span>
+                  <button
+                    onClick={() => setFilter("all")}
+                    className={`rounded-md px-2 py-0.5 text-xs font-medium transition-colors ${
+                      filter === "all"
+                        ? "bg-[#1f1915]/10 text-[#1f1915] font-semibold"
+                        : "text-[#6b675f] hover:text-[#1f1915]"
+                    }`}
+                  >
+                    All ({events.length})
+                  </button>
+                  <button
+                    onClick={() => setFilter("crash")}
+                    className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition-colors ${
+                      filter === "crash"
+                        ? "bg-[#c25450]/15 text-[#a8423e] border border-[#c25450]/30 font-semibold"
+                        : "text-[#6b675f] hover:text-[#1f1915]"
+                    }`}
+                  >
+                    <AlertTriangle className="h-3 w-3 text-[#c25450]" />
+                    Crashes ({crashesCount})
+                  </button>
+                  <button
+                    onClick={() => setFilter("light_change")}
+                    className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition-colors ${
+                      filter === "light_change"
+                        ? "bg-[#c08a2d]/15 text-[#9a6e22] border border-[#c08a2d]/30 font-semibold"
+                        : "text-[#6b675f] hover:text-[#1f1915]"
+                    }`}
+                  >
+                    <Activity className="h-3 w-3 text-[#c08a2d]" />
+                    Signals ({lightCount})
+                  </button>
+                  <button
+                    onClick={() => setFilter("illegal_crossing")}
+                    className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition-colors ${
+                      filter === "illegal_crossing"
+                        ? "bg-[#8c6ba8]/15 text-[#6f5090] border border-[#8c6ba8]/30 font-semibold"
+                        : "text-[#6b675f] hover:text-[#1f1915]"
+                    }`}
+                  >
+                    <Footprints className="h-3 w-3 text-[#8c6ba8]" />
+                    Crossings ({crossingCount})
+                  </button>
+                  <button
+                    onClick={() => setFilter("object_detected")}
+                    className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition-colors ${
+                      filter === "object_detected"
+                        ? "bg-[#20808d]/15 text-[#20808d] border border-[#20808d]/30 font-semibold"
+                        : "text-[#6b675f] hover:text-[#1f1915]"
+                    }`}
+                  >
+                    <Radio className="h-3 w-3 text-[#20808d]" />
+                    Detections ({objectsCount})
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Events List */}
-            <div className="flex-1 overflow-y-auto p-4">
+            {/* Pane Content View: Metrics (WIP) or Logs Feed */}
+            {viewMode === "metrics" ? (
+              <div className="flex-1 overflow-y-auto p-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {/* Metric 1: Danger Level Heuristic */}
+                  <div className="rounded-lg border border-[#e7e5e0] bg-[#fdfbfa] p-3 shadow-2xs">
+                    <div className="flex items-center justify-between text-xs text-[#6b675f]">
+                      <span className="font-medium">Danger Level</span>
+                      <AlertTriangle className={`h-3.5 w-3.5 ${dangerLevel === "CRITICAL" ? "text-[#c25450]" : dangerLevel === "ELEVATED" ? "text-[#c08a2d]" : "text-[#4f9d69]"}`} />
+                    </div>
+                    <div className="mt-2 flex items-baseline gap-2">
+                      <span
+                        className={`text-xl font-bold font-mono ${
+                          dangerLevel === "CRITICAL"
+                            ? "text-[#c25450]"
+                            : dangerLevel === "ELEVATED"
+                            ? "text-[#c08a2d]"
+                            : "text-[#4f9d69]"
+                        }`}
+                      >
+                        {dangerLevel}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-[#8a857c]">
+                      {crashesCount} incident{crashesCount === 1 ? "" : "s"} logged on this node
+                    </p>
+                  </div>
+
+                  {/* Metric 2: Pedestrians Tracked */}
+                  <div className="rounded-lg border border-[#e7e5e0] bg-[#fdfbfa] p-3 shadow-2xs">
+                    <div className="flex items-center justify-between text-xs text-[#6b675f]">
+                      <span className="font-medium">Pedestrians Active</span>
+                      <Footprints className="h-3.5 w-3.5 text-[#8c6ba8]" />
+                    </div>
+                    <div className="mt-2 flex items-baseline gap-2">
+                      <span className="text-xl font-bold font-mono text-[#1f1915]">
+                        {pedestrianCount}
+                      </span>
+                      <span className="text-xs text-[#8a857c]">detected</span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-[#8a857c]">
+                      {crossingCount} jaywalk / illegal crossing events
+                    </p>
+                  </div>
+
+                  {/* Metric 3: Vehicles Tracked */}
+                  <div className="rounded-lg border border-[#e7e5e0] bg-[#fdfbfa] p-3 shadow-2xs">
+                    <div className="flex items-center justify-between text-xs text-[#6b675f]">
+                      <span className="font-medium">Vehicles Tracked</span>
+                      <Radio className="h-3.5 w-3.5 text-[#20808d]" />
+                    </div>
+                    <div className="mt-2 flex items-baseline gap-2">
+                      <span className="text-xl font-bold font-mono text-[#1f1915]">
+                        {vehicleCount}
+                      </span>
+                      <span className="text-xs text-[#8a857c]">units</span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-[#8a857c]">
+                      Realtime optical frame detections
+                    </p>
+                  </div>
+
+                  {/* Metric 4: Traffic Signal Phase Cycling */}
+                  <div className="rounded-lg border border-[#e7e5e0] bg-[#fdfbfa] p-3 shadow-2xs">
+                    <div className="flex items-center justify-between text-xs text-[#6b675f]">
+                      <span className="font-medium">Signal Cycles</span>
+                      <Activity className="h-3.5 w-3.5 text-[#c08a2d]" />
+                    </div>
+                    <div className="mt-2 flex items-baseline gap-2">
+                      <span className="text-xl font-bold font-mono text-[#1f1915]">
+                        {lightCount}
+                      </span>
+                      <span className="text-xs text-[#8a857c]">state switches</span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-[#8a857c]">
+                      Red / Amber / Green phase triggers
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-3 rounded-lg border border-dashed border-[#e7e5e0] bg-[#f5f4ef]/50 p-3 text-center text-xs text-[#8a857c]">
+                  Detailed temporal charts and 10s throughput heuristics are coming up next. Click <strong>Logs</strong> above to inspect raw events.
+                </div>
+              </div>
+            ) : (
+              /* Events List Feed */
+              <div className="flex-1 overflow-y-auto p-4">
               {isLoading ? (
                 <div className="flex h-36 items-center justify-center text-sm text-[#6b675f]">
                   <RefreshCw className="mr-2 h-4 w-4 animate-spin text-[#20808d]" />
@@ -334,9 +507,10 @@ export function CameraEventsPane({
                 </div>
               )}
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
+    </div>
 
       {/* Crash Photo Lightbox Modal */}
       {activePhoto && (

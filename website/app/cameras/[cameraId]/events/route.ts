@@ -2,9 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { proxyFetch } from "@/lib/server-api";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ cameraId: string }> }
 ) {
+  const token = request.cookies.get("auth_token")?.value;
+  const authHeader = request.headers.get("authorization");
+  if (!token && !authHeader) {
+    return NextResponse.json(
+      { error: "Authentication required to access camera events" },
+      { status: 401 }
+    );
+  }
+
   const { cameraId } = await params;
   try {
     const res = await proxyFetch(`/cameras/${cameraId}/events`);

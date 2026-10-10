@@ -11,6 +11,7 @@ import {
   Compass,
   Copy,
   Check,
+  Pencil,
 } from "lucide-react";
 import { Cctv } from "lucide-react";
 import { Camera } from "@/lib/types";
@@ -22,10 +23,12 @@ interface CameraTelemetryHudProps {
   selectedCamera: Camera | null;
   allCameras: Camera[];
   isMockData: boolean;
+  onEditCamera?: (camera: Camera) => void;
 }
 
 export function CameraTelemetryHud({
   selectedCamera,
+  onEditCamera,
 }: CameraTelemetryHudProps) {
   const [copied, setCopied] = useState(false);
 
@@ -71,18 +74,31 @@ export function CameraTelemetryHud({
                 {selectedCamera.name}
               </h3>
             </div>
-            <Badge
-              variant={
-                selectedCamera.state === "online"
-                  ? "success"
-                  : selectedCamera.state === "maintenance"
-                  ? "warning"
-                  : "danger"
-              }
-              className="capitalize text-[11px] font-semibold"
-            >
-              {selectedCamera.state}
-            </Badge>
+            <div className="flex items-center gap-1.5">
+              <Badge
+                variant={
+                  selectedCamera.state === "online"
+                    ? "success"
+                    : selectedCamera.state === "maintenance"
+                    ? "warning"
+                    : "danger"
+                }
+                className="capitalize text-[11px] font-semibold"
+              >
+                {selectedCamera.state}
+              </Badge>
+              {onEditCamera && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onEditCamera(selectedCamera)}
+                  title="Edit camera configuration"
+                  className="h-6 w-6 text-[#6b675f] hover:text-[#20808d] hover:bg-[#20808d]/10 rounded-md"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* UUID Copy Bar */}

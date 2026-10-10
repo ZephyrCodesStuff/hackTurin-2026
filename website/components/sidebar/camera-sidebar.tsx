@@ -9,7 +9,10 @@ import {
   RefreshCw,
   ChevronRight,
   Radio,
+  LogOut,
+  User,
 } from "lucide-react";
+import { useAuth } from "@/components/auth/login-gate";
 import { Camera, CameraState } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +36,7 @@ export function CameraSidebar({
   onRefresh,
   isMockData,
 }: CameraSidebarProps) {
+  const { user, logout } = useAuth();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | CameraState>("all");
 
@@ -244,14 +248,35 @@ export function CameraSidebar({
         )}
       </div>
 
-      {/* Footer Info */}
-      <div className="border-t border-[#e7e5e0] bg-[#f5f4ef] p-2.5 text-center text-[10px] text-[#8a857c]">
-        <span>{filteredCameras.length} of {cameras.length} cameras visible</span>
-        {isMockData && (
-          <span className="block text-[#c08a2d] font-medium mt-0.5">
-            Fallback Demo Mode Active
-          </span>
-        )}
+      {/* Footer Info & User Session */}
+      <div className="border-t border-[#e7e5e0] bg-[#f5f4ef] p-2.5">
+        <div className="flex items-center justify-between text-xs mb-1.5">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <span className="font-mono text-[11px] text-[#1f1915] truncate font-semibold">
+              {user?.username || "authenticated"}
+            </span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={logout}
+            title="Sign out of operations terminal"
+            className="h-6 px-2 text-[10px] text-[#6b675f] hover:text-[#c25450] hover:bg-white"
+          >
+            <LogOut className="h-3 w-3 mr-1" />
+            Logout
+          </Button>
+        </div>
+
+        <div className="text-center text-[10px] text-[#8a857c]">
+          <span>{filteredCameras.length} of {cameras.length} cameras visible</span>
+          {isMockData && (
+            <span className="block text-[#c08a2d] font-medium mt-0.5">
+              Fallback Demo Mode Active
+            </span>
+          )}
+        </div>
       </div>
     </aside>
   );

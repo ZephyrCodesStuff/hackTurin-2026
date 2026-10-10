@@ -106,56 +106,87 @@ def reset_database() -> None:
 
 
 def upsert_camera(camera_id: str, name: str, location: str) -> bool:
-    """Insert or update a camera record. Returns True if a new row was inserted."""
+    """Insert camera record if it doesn't exist, preserving existing names and locations."""
     with get_connection() as connection:
         cursor = connection.execute(
             """
             INSERT INTO CAMERA (id, name, location)
             VALUES (?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
-                name = excluded.name,
-                location = excluded.location
+                name = COALESCE(CAMERA.name, excluded.name),
+                location = COALESCE(CAMERA.location, excluded.location)
             """,
             (camera_id, name, location),
         )
         return cursor.rowcount > 0
 
 
+def update_camera_details(
+    camera_id: str,
+    name: str | None = None,
+    location: str | None = None,
+    latitude: float | None = None,
+    longitude: float | None = None,
+    state: str | None = None,
+) -> dict | None:
+    """Update editable fields for a camera (name, location, lat/lon, state)."""
+    updates = []
+    params = []
+    if name is not None:
+        updates.append("name = ?")
+        params.append(name)
+    if location is not None:
+        updates.append("location = ?")
+        params.append(location)
+    elif latitude is not None and longitude is not None:
+        updates.append("location = ?")
+        params.append(f"({latitude}, {longitude})")
+    if latitude is not None:
+        updates.append("latitude = ?")
+        params.append(latitude)
+    if longitude is not None:
+        updates.append("longitude = ?")
+        params.append(longitude)
+    if state is not None:
+        updates.append("state = ?")
+        params.append(state)
+
+    if not updates:
+        return get_camera_by_id(camera_id)
+
+    params.append(camera_id)
+    with get_connection() as connection:
+        connection.execute(
+            f"UPDATE CAMERA SET {', '.join(updates)} WHERE id = ?",
+            params,
+        )
+        connection.commit()
+    return get_camera_by_id(camera_id)
+
+
 def update_camera_heartbeat(
     camera_id: str,
     state: str,
-    name: str | None = None,
-    latitude: float | None = None,
-    longitude: float | None = None,
     last_heartbeat: int | None = None,
     last_event_timestamp: int | None = None,
     battery_level: float | None = None,
     firmware_version: str | None = None,
     wifi_signal: int | None = None,
 ) -> dict:
-    """Upsert camera heartbeat and return updated camera record."""
-    camera_name = name if name else f"Camera {camera_id[:8]}"
-    camera_location = f"({latitude}, {longitude})" if latitude is not None and longitude is not None else "Unknown"
+    """Upsert camera heartbeat telemetry (state, battery, firmware, wifi) without touching name or location."""
+    default_name = f"Camera {camera_id[:8]}"
 
     with get_connection() as connection:
         connection.execute(
             """
             INSERT INTO CAMERA (
-                id, name, location, latitude, longitude, state,
+                id, name, location, state,
                 last_heartbeat, last_event_timestamp, battery_level,
                 firmware_version, wifi_signal
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, 'Unknown', ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 state = excluded.state,
-                name = case when ? is not null then ? else CAMERA.name end,
-                latitude = coalesce(excluded.latitude, CAMERA.latitude),
-                longitude = coalesce(excluded.longitude, CAMERA.longitude),
-                location = case
-                    when excluded.latitude is not null and excluded.longitude is not null
-                    then excluded.location
-                    else CAMERA.location
-                end,
                 last_heartbeat = coalesce(excluded.last_heartbeat, CAMERA.last_heartbeat),
                 last_event_timestamp = coalesce(excluded.last_event_timestamp, CAMERA.last_event_timestamp),
                 battery_level = coalesce(excluded.battery_level, CAMERA.battery_level),
@@ -164,18 +195,13 @@ def update_camera_heartbeat(
             """,
             (
                 camera_id,
-                camera_name,
-                camera_location,
-                latitude,
-                longitude,
+                default_name,
                 state,
                 last_heartbeat,
                 last_event_timestamp,
                 battery_level,
                 firmware_version,
                 wifi_signal,
-                name,
-                name,
             ),
         )
     return get_camera_by_id(camera_id)  # type: ignore

@@ -4,7 +4,10 @@
  * and automatically falls back to 127.0.0.1:8000 for local development.
  */
 export async function proxyFetch(path: string, init?: RequestInit): Promise<Response> {
-  const preferredHost = process.env.API_HOST || "http://api:8000";
+  const preferredHost =
+    process.env.API_HOST ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://127.0.0.1:8000";
   try {
     const res = await fetch(`${preferredHost}${path}`, {
       ...init,

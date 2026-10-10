@@ -1,4 +1,4 @@
-import { Camera, CameraEventsResponse, CameraEvent } from "./types";
+import { Camera, CameraEventsResponse, CameraEvent, CameraState } from "./types";
 
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -235,4 +235,36 @@ export function getPhotoUrl(photoId: string): string {
     return `/photos/${photoId}`;
   }
   return `${API_BASE_URL}/photos/${photoId}`;
+}
+
+export async function updateCamera(
+  cameraId: string,
+  payload: {
+    name?: string;
+    latitude?: number;
+    longitude?: number;
+    state?: CameraState;
+  }
+): Promise<{ camera: Camera }> {
+  const url =
+    typeof window !== "undefined"
+      ? `/cameras/${cameraId}`
+      : `${API_BASE_URL}/cameras/${cameraId}`;
+
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || err.error || `HTTP ${res.status}`);
+  }
+
+  const data = await res.json();
+  return { camera: data.camera };
 }

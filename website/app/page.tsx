@@ -7,10 +7,13 @@ import { CameraSidebar } from "@/components/sidebar/camera-sidebar";
 import { MapWrapper } from "@/components/map/map-wrapper";
 import { CameraTelemetryHud } from "@/components/hud/camera-telemetry-hud";
 import { CameraEventsPane } from "@/components/events/camera-events-pane";
+import { LoginGate } from "@/components/auth/login-gate";
+import { EditCameraDialog } from "@/components/cameras/edit-camera-dialog";
 
-export default function DashboardPage() {
+function DashboardContent() {
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [selectedCamera, setSelectedCamera] = useState<Camera | null>(null);
+  const [editingCamera, setEditingCamera] = useState<Camera | null>(null);
   const [events, setEvents] = useState<CameraEvent[]>([]);
   const [isCamerasLoading, setIsCamerasLoading] = useState(true);
   const [isEventsLoading, setIsEventsLoading] = useState(false);
@@ -33,7 +36,7 @@ export default function DashboardPage() {
     }
   }, []);
 
-  // Initial load & 10s auto-polling
+  // Initial load & auto-polling
   useEffect(() => {
     let isMounted = true;
     (async () => {
@@ -84,45 +87,74 @@ export default function DashboardPage() {
     setEvents([]);
   }, []);
 
-  return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#faf9f5] font-sans text-[#1f1915] select-none">
-      {/* 1. Left Sidebar (18 - 20% max width) */}
-      <CameraSidebar
-        cameras={cameras}
-        selectedCameraId={selectedCamera?.id || null}
-        onSelectCamera={handleSelectCamera}
-        isLoading={isCamerasLoading}
-        onRefresh={loadCameras}
-        isMockData={isMockData}
-      />
+  const handleCameraUpdated = useCallback((updatedCamera: Camera) => {
+    setCameras((prev) =>
+      prev.map((c) => (c.id === updatedCamera.id ? updatedCamera : c))
+    );
+    setSelectedCamera((prev) =>
+      prev?.id === updatedCamera.id ? updatedCamera : prev
+    );
+  }, []);
 
-      {/* 2. Main Map Viewport (Takes up the entire rest of viewport) */}
-      <main className="relative flex-1 h-full w-full overflow-hidden bg-stone-100">
-        {/* OpenStreetMap Layer */}
-        <MapWrapper
+  return (
+    <>
+      <div className="flex h-screen w-screen overflow-hidden bg-[#faf9f5] font-sans text-[#1f1915] select-none">
+        {/* 1. Left Sidebar (18 - 20% max width) */}
+        <CameraSidebar
           cameras={cameras}
           selectedCameraId={selectedCamera?.id || null}
           onSelectCamera={handleSelectCamera}
-        />
-
-        {/* 3. Top-Right Telemetry & Heartbeat HUD Box */}
-        <CameraTelemetryHud
-          selectedCamera={selectedCamera}
-          allCameras={cameras}
+          isLoading={isCamerasLoading}
+          onRefresh={loadCameras}
           isMockData={isMockData}
         />
 
-        {/* 4. Bottom Detail & Events Feed Pane */}
-        {selectedCamera && (
-          <CameraEventsPane
-            camera={selectedCamera}
-            events={events}
-            isLoading={isEventsLoading}
-            onClose={handleCloseEventsPane}
-            onRefresh={() => loadEvents(selectedCamera.id)}
+        {/* 2. Main Map Viewport (Takes up the entire rest of viewport) */}
+        <main className="relative flex-1 h-full w-full overflow-hidden bg-stone-100">
+          {/* OpenStreetMap Layer */}
+          <MapWrapper
+            cameras={cameras}
+            selectedCameraId={selectedCamera?.id || null}
+            onSelectCamera={handleSelectCamera}
           />
-        )}
-      </main>
-    </div>
+
+          {/* 3. Top-Right Telemetry & Heartbeat HUD Box */}
+          <CameraTelemetryHud
+            selectedCamera={selectedCamera}
+            allCameras={cameras}
+            isMockData={isMockData}
+            onEditCamera={setEditingCamera}
+          />
+
+          {/* 4. Bottom Detail & Events Feed Pane */}
+          {selectedCamera && (
+            <CameraEventsPane
+              camera={selectedCamera}
+              events={events}
+              isLoading={isEventsLoading}
+              onClose={handleCloseEventsPane}
+              onRefresh={() => loadEvents(selectedCamera.id)}
+              onEditCamera={setEditingCamera}
+            />
+          )}
+        </main>
+      </div>
+
+      {/* Fullscreen Camera Configuration Dialog */}
+      <EditCameraDialog
+        isOpen={!!editingCamera}
+        camera={editingCamera}
+        onClose={() => setEditingCamera(null)}
+        onCameraUpdated={handleCameraUpdated}
+      />
+    </>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <LoginGate>
+      <DashboardContent />
+    </LoginGate>
   );
 }

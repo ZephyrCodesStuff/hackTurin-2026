@@ -23,7 +23,9 @@ from traffic_api.database import (
     PHOTOS_DIR,
     initialize_database,
 )
-from scripts.jwt import create_camera_token
+from traffic_api.auth_user import seed_default_admin_if_needed
+from traffic_api.user_db import get_user_by_username, set_user_cameras
+from scripts.auth import create_camera_token
 
 RESOURCES_DIR = SCRIPT_DIR / "resources"
 
@@ -173,7 +175,8 @@ def cmd_nuke(api_url: str = "http://localhost:8000") -> None:
             print(f"  Removed {PHOTOS_DIR}")
 
         initialize_database()
-        print("Local database reset to clean state.")
+        seed_default_admin_if_needed()
+        print("Local database reset to clean state (default admin seeded).")
 
 
 def cmd_build(api_url: str, num_events_per_cam: int = 15, skip_nuke: bool = False) -> None:
@@ -314,6 +317,14 @@ def cmd_build(api_url: str, num_events_per_cam: int = 15, skip_nuke: bool = Fals
         if read_resp.status_code == 200:
             cam_list = read_resp.json().get("cameras", [])
             print(f"\nVerification: {api_url}/cameras returned {len(cam_list)} cameras in Turin.")
+
+        # 5. Local DB Sync: Ensure default admin user exists with credentials admin/admin
+        if "localhost" in api_url or "127.0.0.1" in api_url:
+            seed_default_admin_if_needed()
+            admin_user = get_user_by_username("admin")
+            if admin_user:
+                set_user_cameras(admin_user["id"], [c["id"] for c in DEMO_CAMERAS])
+                print("  ✓ Admin account verified with access to all demo cameras (admin / admin).")
 
     print("\nSummary of Ingested Turin Data:")
     print(f"  Cameras Seeded:    {len(DEMO_CAMERAS)}")

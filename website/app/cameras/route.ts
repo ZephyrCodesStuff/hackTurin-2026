@@ -1,7 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { proxyFetch } from "@/lib/server-api";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const token = req.cookies.get("auth_token")?.value;
+  const authHeader = req.headers.get("authorization");
+  if (!token && !authHeader) {
+    return NextResponse.json(
+      { error: "Authentication required to access cameras" },
+      { status: 401 }
+    );
+  }
+
   try {
     const res = await proxyFetch("/cameras");
     if (!res.ok) {
