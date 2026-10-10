@@ -1,0 +1,38 @@
+services:
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      - DEVELOPMENT_MODE=true
+    env_file:
+      - ./api/.env
+    volumes:
+      - ./api/data:/app/data
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  website:
+    build:
+      context: ./website
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      - API_HOST=http://api:8000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - app-network
+
+networks:
+  default:
+  app-network:
+    driver: bridge

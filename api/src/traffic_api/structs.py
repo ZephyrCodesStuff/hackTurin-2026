@@ -77,6 +77,7 @@ class IngestPayload(StrictBaseModel):
 
 
 class CameraHeartbeatPayload(StrictBaseModel):
+    name: Optional[str] = Field(None, description="Camera friendly name or intersection")
     state: CameraState = Field(default=CameraState.ONLINE, description="Current camera operational state")
     location: Optional[tuple[float, float]] = Field(
         None, description="Current GPS coordinates as (latitude, longitude)"

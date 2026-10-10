@@ -6,12 +6,14 @@ Quick-start notes for the hackathon.
 
 ## 1. Quick Start
 
-### Option A: Docker (Recommended)
+### Option A: Docker (Repo Root)
 ```sh
-docker compose up --build
+# Starts both the Traffic API and Next.js Website Dashboard
+docker-compose up --build
 ```
-API runs at **http://localhost:8000**  
-Swagger docs at **http://localhost:8000/docs**
+* **Website Dashboard**: http://localhost:3000  
+* **API**: http://localhost:8000  
+* **Swagger Docs**: http://localhost:8000/docs
 
 ### Option B: Local Dev
 ```sh
@@ -254,8 +256,11 @@ curl -X POST http://localhost:8000/cameras/550e8400-e29b-41d4-a716-446655440000/
 
 ### Demo CLI (`scripts/demo.py`)
 ```sh
-# Wipe local DB and uploaded photos to clean empty state:
+# Wipe DB and uploaded photos (local or remote via API /nuke):
 uv run python scripts/demo.py nuke
+
+# Nuke a remote API instance:
+uv run python scripts/demo.py nuke --api-url https://api.myhackathon.dev
 
 # Reset & dogfood the API to seed realistic cameras, events & crash photos:
 uv run python scripts/demo.py build
@@ -268,6 +273,12 @@ API_URL=https://api.myhackathon.dev uv run python scripts/demo.py build
 
 # Customize event count per camera (default: 15):
 uv run python scripts/demo.py build --events-per-camera 30
+
+# Run real-time traffic signal simulation (cycles green -> amber -> red live):
+uv run python scripts/demo.py live
+
+# Customize cycle interval (default: 3.5s):
+uv run python scripts/demo.py live --interval 2.0
 ```
 
 * Inspect DB directly:

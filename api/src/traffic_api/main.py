@@ -1,11 +1,17 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 from uuid import UUID, uuid4
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from traffic_api.auth import CameraToken, require_camera_access, validate_jwt_configuration
+from traffic_api.auth import (
+    CameraToken,
+    get_current_camera_token,
+    require_camera_access,
+    validate_jwt_configuration,
+)
 from traffic_api.database import (
     PHOTOS_DIR,
     get_all_cameras,
@@ -13,6 +19,7 @@ from traffic_api.database import (
     get_camera_events,
     initialize_database,
     insert_events,
+    reset_database,
     update_camera_heartbeat,
     upsert_camera,
 )
@@ -51,6 +58,20 @@ app.add_middleware(
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
+
+
+@app.post("/nuke")
+async def nuke_database(token: CameraToken = Depends(get_current_camera_token)):
+    """Authorized endpoint: wipe all database tables and uploaded photos. Only enabled when DEVELOPMENT_MODE=true."""
+    if os.environ.get("DEVELOPMENT_MODE", "").strip().lower() != "true":
+        raise HTTPException(status_code=404, detail="Not Found")
+    reset_database()
+    logger.warning("Database and photos nuked by %s via /nuke", token.subject)
+    return {
+        "status": "ok",
+        "message": "Database and photos nuked successfully",
+        "nuked_by": token.subject,
+    }
 
 
 @app.get("/cameras")
@@ -98,6 +119,7 @@ async def camera_heartbeat(
 
     updated_camera = update_camera_heartbeat(
         camera_id=camera_id_str,
+        name=body.name,
         state=body.state.value,
         latitude=lat,
         longitude=lon,
@@ -190,4 +212,11 @@ async def get_photo(photo_id: UUID):
     photo_path = PHOTOS_DIR / f"{photo_id}.bin"
     if not photo_path.is_file():
         raise HTTPException(status_code=404, detail="Photo not found")
-    return Response(content=photo_path.read_bytes(), media_type="application/octet-stream")
+    data = photo_path.read_bytes()
+    if data.startswith(b"\x89PNG"):
+        media_type = "image/png"
+    elif data.startswith(b"RIFF") and b"WEBP" in data[:16]:
+        media_type = "image/webp"
+    else:
+        media_type = "image/jpeg"
+    return Response(content=data, media_type=media_type)

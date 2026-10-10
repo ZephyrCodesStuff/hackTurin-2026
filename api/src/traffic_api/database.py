@@ -83,6 +83,28 @@ def initialize_database() -> None:
         _migrate_schema_columns(connection)
 
 
+def reset_database() -> None:
+    """Clear all records from database and delete stored photos while server remains online."""
+    with get_connection() as connection:
+        connection.execute("PRAGMA foreign_keys = OFF")
+        connection.execute("DELETE FROM CRASH")
+        connection.execute("DELETE FROM LIGHT_CHANGE")
+        connection.execute("DELETE FROM ILLEGAL_CROSSING")
+        connection.execute("DELETE FROM OBJECT_DETECTED")
+        connection.execute("DELETE FROM CAMERA")
+        connection.execute("PRAGMA foreign_keys = ON")
+        connection.commit()
+        connection.execute("VACUUM")
+
+    if PHOTOS_DIR.exists():
+        for item in PHOTOS_DIR.iterdir():
+            if item.is_file():
+                try:
+                    item.unlink()
+                except OSError:
+                    pass
+
+
 def upsert_camera(camera_id: str, name: str, location: str) -> bool:
     """Insert or update a camera record. Returns True if a new row was inserted."""
     with get_connection() as connection:
@@ -102,6 +124,7 @@ def upsert_camera(camera_id: str, name: str, location: str) -> bool:
 def update_camera_heartbeat(
     camera_id: str,
     state: str,
+    name: str | None = None,
     latitude: float | None = None,
     longitude: float | None = None,
     last_heartbeat: int | None = None,
@@ -111,7 +134,7 @@ def update_camera_heartbeat(
     wifi_signal: int | None = None,
 ) -> dict:
     """Upsert camera heartbeat and return updated camera record."""
-    camera_name = f"Camera {camera_id[:8]}"
+    camera_name = name if name else f"Camera {camera_id[:8]}"
     camera_location = f"({latitude}, {longitude})" if latitude is not None and longitude is not None else "Unknown"
 
     with get_connection() as connection:
@@ -125,6 +148,7 @@ def update_camera_heartbeat(
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 state = excluded.state,
+                name = case when ? is not null then ? else CAMERA.name end,
                 latitude = coalesce(excluded.latitude, CAMERA.latitude),
                 longitude = coalesce(excluded.longitude, CAMERA.longitude),
                 location = case
@@ -150,6 +174,8 @@ def update_camera_heartbeat(
                 battery_level,
                 firmware_version,
                 wifi_signal,
+                name,
+                name,
             ),
         )
     return get_camera_by_id(camera_id)  # type: ignore
@@ -225,13 +251,27 @@ def _format_camera_row(row: sqlite3.Row) -> dict:
 
 
 def get_all_cameras() -> list[dict]:
-    """Return all registered cameras."""
+    """Return all registered cameras with current traffic light status."""
     with get_connection() as connection:
         rows = connection.execute(
             """
             SELECT id, name, location, latitude, longitude, state,
                    last_heartbeat, last_event_timestamp, battery_level,
-                   firmware_version, wifi_signal
+                   firmware_version, wifi_signal,
+                   (
+                       SELECT color
+                       FROM LIGHT_CHANGE
+                       WHERE CAMERA_id = CAMERA.id
+                       ORDER BY timestamp DESC, id DESC
+                       LIMIT 1
+                   ) AS current_light,
+                   (
+                       SELECT timestamp
+                       FROM LIGHT_CHANGE
+                       WHERE CAMERA_id = CAMERA.id
+                       ORDER BY timestamp DESC, id DESC
+                       LIMIT 1
+                   ) AS current_light_timestamp
             FROM CAMERA
             ORDER BY name
             """
@@ -240,13 +280,27 @@ def get_all_cameras() -> list[dict]:
 
 
 def get_camera_by_id(camera_id: str) -> dict | None:
-    """Return a single camera by ID."""
+    """Return a single camera by ID with current traffic light status."""
     with get_connection() as connection:
         row = connection.execute(
             """
             SELECT id, name, location, latitude, longitude, state,
                    last_heartbeat, last_event_timestamp, battery_level,
-                   firmware_version, wifi_signal
+                   firmware_version, wifi_signal,
+                   (
+                       SELECT color
+                       FROM LIGHT_CHANGE
+                       WHERE CAMERA_id = CAMERA.id
+                       ORDER BY timestamp DESC, id DESC
+                       LIMIT 1
+                   ) AS current_light,
+                   (
+                       SELECT timestamp
+                       FROM LIGHT_CHANGE
+                       WHERE CAMERA_id = CAMERA.id
+                       ORDER BY timestamp DESC, id DESC
+                       LIMIT 1
+                   ) AS current_light_timestamp
             FROM CAMERA
             WHERE id = ?
             """,
