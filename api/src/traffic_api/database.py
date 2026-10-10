@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """SQLite setup and connection helpers for the API."""
 
 import sqlite3
@@ -24,6 +26,38 @@ def _schema_is_current(connection: sqlite3.Connection) -> bool:
     )
 
 
+def _migrate_schema_columns(connection: sqlite3.Connection) -> None:
+    """Add new columns to existing tables if missing."""
+    camera_cols = {
+        row["name"] for row in connection.execute("PRAGMA table_info(CAMERA)").fetchall()
+    }
+    new_camera_columns = [
+        ("latitude", "REAL"),
+        ("longitude", "REAL"),
+        ("state", "TEXT NOT NULL DEFAULT 'online'"),
+        ("last_heartbeat", "INTEGER"),
+        ("last_event_timestamp", "INTEGER"),
+        ("battery_level", "REAL"),
+        ("firmware_version", "TEXT"),
+        ("wifi_signal", "INTEGER"),
+    ]
+    for col_name, col_def in new_camera_columns:
+        if col_name not in camera_cols:
+            connection.execute(f"ALTER TABLE CAMERA ADD COLUMN {col_name} {col_def}")
+
+    crossing_cols = {
+        row["name"] for row in connection.execute("PRAGMA table_info(ILLEGAL_CROSSING)").fetchall()
+    }
+    if "entity_type" not in crossing_cols:
+        connection.execute("ALTER TABLE ILLEGAL_CROSSING ADD COLUMN entity_type TEXT NOT NULL DEFAULT 'pedestrian'")
+
+    object_cols = {
+        row["name"] for row in connection.execute("PRAGMA table_info(OBJECT_DETECTED)").fetchall()
+    }
+    if "entity_type" not in object_cols:
+        connection.execute("ALTER TABLE OBJECT_DETECTED ADD COLUMN entity_type TEXT NOT NULL DEFAULT 'car'")
+
+
 def get_connection() -> sqlite3.Connection:
     """Return a connection with SQLite foreign-key checks enabled."""
     connection = sqlite3.connect(DATABASE_PATH)
@@ -46,6 +80,7 @@ def initialize_database() -> None:
                 "then delete data/traffic.db and restart the API."
             )
         connection.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+        _migrate_schema_columns(connection)
 
 
 def upsert_camera(camera_id: str, name: str, location: str) -> bool:
@@ -62,6 +97,62 @@ def upsert_camera(camera_id: str, name: str, location: str) -> bool:
             (camera_id, name, location),
         )
         return cursor.rowcount > 0
+
+
+def update_camera_heartbeat(
+    camera_id: str,
+    state: str,
+    latitude: float | None = None,
+    longitude: float | None = None,
+    last_heartbeat: int | None = None,
+    last_event_timestamp: int | None = None,
+    battery_level: float | None = None,
+    firmware_version: str | None = None,
+    wifi_signal: int | None = None,
+) -> dict:
+    """Upsert camera heartbeat and return updated camera record."""
+    camera_name = f"Camera {camera_id[:8]}"
+    camera_location = f"({latitude}, {longitude})" if latitude is not None and longitude is not None else "Unknown"
+
+    with get_connection() as connection:
+        connection.execute(
+            """
+            INSERT INTO CAMERA (
+                id, name, location, latitude, longitude, state,
+                last_heartbeat, last_event_timestamp, battery_level,
+                firmware_version, wifi_signal
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                state = excluded.state,
+                latitude = coalesce(excluded.latitude, CAMERA.latitude),
+                longitude = coalesce(excluded.longitude, CAMERA.longitude),
+                location = case
+                    when excluded.latitude is not null and excluded.longitude is not null
+                    then excluded.location
+                    else CAMERA.location
+                end,
+                last_heartbeat = coalesce(excluded.last_heartbeat, CAMERA.last_heartbeat),
+                last_event_timestamp = coalesce(excluded.last_event_timestamp, CAMERA.last_event_timestamp),
+                battery_level = coalesce(excluded.battery_level, CAMERA.battery_level),
+                firmware_version = coalesce(excluded.firmware_version, CAMERA.firmware_version),
+                wifi_signal = coalesce(excluded.wifi_signal, CAMERA.wifi_signal)
+            """,
+            (
+                camera_id,
+                camera_name,
+                camera_location,
+                latitude,
+                longitude,
+                state,
+                last_heartbeat,
+                last_event_timestamp,
+                battery_level,
+                firmware_version,
+                wifi_signal,
+            ),
+        )
+    return get_camera_by_id(camera_id)  # type: ignore
 
 
 def insert_events(camera_id: str, events: list) -> dict[str, int]:
@@ -96,22 +187,131 @@ def insert_events(camera_id: str, events: list) -> dict[str, int]:
                 )
                 counts["light_changes"] += 1
             elif event_type == "illegal_crossing":
+                entity_val = event.entity_type.value if hasattr(event.entity_type, "value") else str(event.entity_type)
                 connection.execute(
                     """
-                    INSERT INTO ILLEGAL_CROSSING (timestamp, CAMERA_id)
-                    VALUES (?, ?)
+                    INSERT INTO ILLEGAL_CROSSING (entity_type, timestamp, CAMERA_id)
+                    VALUES (?, ?, ?)
                     """,
-                    (event.timestamp, camera_id),
+                    (entity_val, event.timestamp, camera_id),
                 )
                 counts["illegal_crossings"] += 1
             elif event_type == "object_detected":
+                entity_val = event.entity_type.value if hasattr(event.entity_type, "value") else str(event.entity_type)
                 connection.execute(
                     """
-                    INSERT INTO OBJECT_DETECTED (velocity, timestamp, CAMERA_id)
-                    VALUES (?, ?, ?)
+                    INSERT INTO OBJECT_DETECTED (entity_type, velocity, timestamp, CAMERA_id)
+                    VALUES (?, ?, ?, ?)
                     """,
-                    (event.velocity, event.timestamp, camera_id),
+                    (entity_val, event.velocity, event.timestamp, camera_id),
                 )
                 counts["objects_detected"] += 1
 
     return counts
+
+
+def _format_camera_row(row: sqlite3.Row) -> dict:
+    """Format camera row for API output, packaging lat/lon as a location tuple/list."""
+    d = dict(row)
+    lat = d.pop("latitude", None)
+    lon = d.pop("longitude", None)
+    if lat is not None and lon is not None:
+        d["location"] = [lat, lon]
+    elif d.get("location") and d["location"] != "Unknown":
+        d["location"] = d["location"]
+    else:
+        d["location"] = None
+    return d
+
+
+def get_all_cameras() -> list[dict]:
+    """Return all registered cameras."""
+    with get_connection() as connection:
+        rows = connection.execute(
+            """
+            SELECT id, name, location, latitude, longitude, state,
+                   last_heartbeat, last_event_timestamp, battery_level,
+                   firmware_version, wifi_signal
+            FROM CAMERA
+            ORDER BY name
+            """
+        ).fetchall()
+        return [_format_camera_row(row) for row in rows]
+
+
+def get_camera_by_id(camera_id: str) -> dict | None:
+    """Return a single camera by ID."""
+    with get_connection() as connection:
+        row = connection.execute(
+            """
+            SELECT id, name, location, latitude, longitude, state,
+                   last_heartbeat, last_event_timestamp, battery_level,
+                   firmware_version, wifi_signal
+            FROM CAMERA
+            WHERE id = ?
+            """,
+            (camera_id,),
+        ).fetchone()
+        return _format_camera_row(row) if row else None
+
+
+def get_camera_events(camera_id: str) -> list[dict]:
+    """Return all events captured by a camera, merged and sorted chronologically (descending)."""
+    events = []
+    with get_connection() as connection:
+        # Crashes
+        rows = connection.execute(
+            "SELECT id, photo_id, timestamp FROM CRASH WHERE CAMERA_id = ?",
+            (camera_id,),
+        ).fetchall()
+        for r in rows:
+            events.append({
+                "type": "crash",
+                "id": r["id"],
+                "photo_id": r["photo_id"],
+                "timestamp": r["timestamp"],
+            })
+
+        # Light changes
+        rows = connection.execute(
+            "SELECT id, color, timestamp FROM LIGHT_CHANGE WHERE CAMERA_id = ?",
+            (camera_id,),
+        ).fetchall()
+        for r in rows:
+            events.append({
+                "type": "light_change",
+                "id": r["id"],
+                "color": r["color"],
+                "timestamp": r["timestamp"],
+            })
+
+        # Illegal crossings
+        rows = connection.execute(
+            "SELECT id, entity_type, timestamp FROM ILLEGAL_CROSSING WHERE CAMERA_id = ?",
+            (camera_id,),
+        ).fetchall()
+        for r in rows:
+            events.append({
+                "type": "illegal_crossing",
+                "id": r["id"],
+                "entity_type": r["entity_type"],
+                "timestamp": r["timestamp"],
+            })
+
+        # Objects detected
+        rows = connection.execute(
+            "SELECT id, entity_type, velocity, timestamp FROM OBJECT_DETECTED WHERE CAMERA_id = ?",
+            (camera_id,),
+        ).fetchall()
+        for r in rows:
+            events.append({
+                "type": "object_detected",
+                "id": r["id"],
+                "entity_type": r["entity_type"],
+                "velocity": r["velocity"],
+                "timestamp": r["timestamp"],
+            })
+
+    # Sort newest first
+    events.sort(key=lambda e: e["timestamp"], reverse=True)
+    return events

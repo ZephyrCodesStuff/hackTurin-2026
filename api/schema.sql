@@ -4,6 +4,14 @@ CREATE TABLE IF NOT EXISTS CAMERA (
     id TEXT NOT NULL PRIMARY KEY,
     name TEXT NOT NULL,
     location TEXT NOT NULL,
+    latitude REAL,
+    longitude REAL,
+    state TEXT NOT NULL DEFAULT 'online' CHECK (state IN ('online', 'maintenance', 'offline')),
+    last_heartbeat INTEGER,
+    last_event_timestamp INTEGER,
+    battery_level REAL,
+    firmware_version TEXT,
+    wifi_signal INTEGER,
     CHECK (
         length(id) = 36
         AND substr(id, 9, 1) = '-'
@@ -49,6 +57,7 @@ CREATE TABLE IF NOT EXISTS LIGHT_CHANGE (
 
 CREATE TABLE IF NOT EXISTS ILLEGAL_CROSSING (
     id INTEGER NOT NULL,
+    entity_type TEXT NOT NULL CHECK (entity_type IN ('pedestrian', 'car', 'motorbike', 'bike', 'truck', 'animal')),
     timestamp INTEGER NOT NULL,
     CAMERA_id TEXT NOT NULL,
     PRIMARY KEY (id),
@@ -59,6 +68,7 @@ CREATE TABLE IF NOT EXISTS ILLEGAL_CROSSING (
 
 CREATE TABLE IF NOT EXISTS OBJECT_DETECTED (
     id INTEGER NOT NULL,
+    entity_type TEXT NOT NULL CHECK (entity_type IN ('pedestrian', 'car', 'motorbike', 'bike', 'truck', 'animal')),
     velocity REAL,
     timestamp INTEGER NOT NULL,
     CAMERA_id TEXT NOT NULL,

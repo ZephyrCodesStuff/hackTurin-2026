@@ -3,10 +3,20 @@ from contextlib import asynccontextmanager
 from uuid import UUID, uuid4
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 
 from traffic_api.auth import CameraToken, require_camera_access, validate_jwt_configuration
-from traffic_api.database import PHOTOS_DIR, initialize_database, insert_events, upsert_camera
-from traffic_api.structs import IngestPayload
+from traffic_api.database import (
+    PHOTOS_DIR,
+    get_all_cameras,
+    get_camera_by_id,
+    get_camera_events,
+    initialize_database,
+    insert_events,
+    update_camera_heartbeat,
+    upsert_camera,
+)
+from traffic_api.structs import CameraHeartbeatPayload, IngestPayload
 
 logger = logging.getLogger("traffic_api")
 
@@ -28,9 +38,91 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Enable CORS for the frontend demo website
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
+
+
+@app.get("/cameras")
+async def list_cameras():
+    """Public read-only endpoint: list all registered cameras."""
+    cameras = get_all_cameras()
+    return {"cameras": cameras}
+
+
+@app.get("/cameras/{camera_id}")
+async def get_camera(camera_id: UUID):
+    """Public read-only endpoint: get camera details by ID."""
+    camera = get_camera_by_id(str(camera_id))
+    if not camera:
+        raise HTTPException(status_code=404, detail="Camera not found")
+    return {"camera": camera}
+
+
+@app.get("/cameras/{camera_id}/events")
+async def list_camera_events(camera_id: UUID):
+    """Public read-only endpoint: list all events captured by this camera (newest first)."""
+    camera_id_str = str(camera_id)
+    camera = get_camera_by_id(camera_id_str)
+    if not camera:
+        raise HTTPException(status_code=404, detail="Camera not found")
+
+    events = get_camera_events(camera_id_str)
+    return {
+        "camera_id": camera_id_str,
+        "camera": camera,
+        "total_events": len(events),
+        "events": events,
+    }
+
+
+@app.post("/cameras/{camera_id}/heartbeat")
+async def camera_heartbeat(
+    camera_id: UUID,
+    body: CameraHeartbeatPayload,
+    token: CameraToken = Depends(require_camera_access),
+):
+    """Camera heartbeat: broadcasts state, location, battery, and diagnostic metadata."""
+    camera_id_str = str(camera_id)
+    lat, lon = body.location if body.location else (None, None)
+
+    updated_camera = update_camera_heartbeat(
+        camera_id=camera_id_str,
+        state=body.state.value,
+        latitude=lat,
+        longitude=lon,
+        last_heartbeat=body.last_heartbeat,
+        last_event_timestamp=body.last_event_timestamp,
+        battery_level=body.battery_level,
+        firmware_version=body.firmware_version,
+        wifi_signal=body.wifi_signal,
+    )
+
+    logger.info(
+        "Heartbeat received from camera %s: state=%s, location=%s, battery=%s",
+        camera_id_str,
+        body.state.value,
+        body.location,
+        body.battery_level,
+    )
+
+    return {
+        "message": "Heartbeat updated successfully",
+        "camera_id": camera_id_str,
+        "submitted_by": token.subject,
+        "camera": updated_camera,
+    }
+
 
 @app.post("/cameras/{camera_id}/ingest")
 async def ingest_data(
