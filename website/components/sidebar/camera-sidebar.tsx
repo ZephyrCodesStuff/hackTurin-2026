@@ -14,7 +14,7 @@ import { Camera, CameraState } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatRelativeTime } from "@/lib/utils";
+import { formatRelativeTime, isSignalized } from "@/lib/utils";
 
 interface CameraSidebarProps {
   cameras: Camera[];
@@ -120,6 +120,7 @@ export function CameraSidebar({
         ) : (
           filteredCameras.map((camera) => {
             const isSelected = selectedCameraId === camera.id;
+            const signalized = isSignalized(camera);
             return (
               <div
                 key={camera.id}
@@ -137,6 +138,8 @@ export function CameraSidebar({
                       className={`h-2.5 w-2.5 rounded-full shrink-0 ${
                         camera.state !== "online"
                           ? "bg-[#b8b3aa] opacity-50"
+                          : !signalized
+                          ? "bg-[#20808d]"
                           : camera.current_light === "green"
                           ? "bg-[#4f9d69]"
                           : camera.current_light === "amber"
@@ -146,8 +149,10 @@ export function CameraSidebar({
                           : "bg-[#20808d]"
                       }`}
                       title={
-                        camera.state === "online" && camera.current_light
+                        camera.state === "online" && signalized && camera.current_light
                           ? `Traffic Light: ${camera.current_light}`
+                          : camera.state === "online" && !signalized
+                          ? "Unsignalized crossing"
                           : camera.state
                       }
                     />
@@ -197,7 +202,7 @@ export function CameraSidebar({
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    {camera.state === "online" && camera.current_light && (
+                    {camera.state === "online" && signalized && camera.current_light && (
                       <span
                         className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-semibold capitalize ${
                           camera.current_light === "green"

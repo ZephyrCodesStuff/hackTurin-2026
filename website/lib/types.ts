@@ -1,5 +1,7 @@
 export type CameraState = "online" | "maintenance" | "offline";
 
+export type CameraType = "traffic_light" | "camera";
+
 export interface Camera {
   id: string;
   name: string;
@@ -14,6 +16,9 @@ export interface Camera {
   wifi_signal: number | null;
   current_light?: TrafficLightColor | null;
   current_light_timestamp?: number | null;
+  // "traffic_light" if the camera has ever reported a light change,
+  // otherwise "camera" (monitors an unsignalized crossing).
+  camera_type?: CameraType;
 }
 
 export type TrafficLightColor = "red" | "amber" | "green";

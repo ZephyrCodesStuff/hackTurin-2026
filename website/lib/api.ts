@@ -17,6 +17,7 @@ export const MOCK_CAMERAS: Camera[] = [
     wifi_signal: -58,
     current_light: "green",
     current_light_timestamp: Date.now() - 32000,
+    camera_type: "traffic_light",
   },
   {
     id: "550e8400-e29b-41d4-a716-446655440002",
@@ -30,6 +31,7 @@ export const MOCK_CAMERAS: Camera[] = [
     wifi_signal: -64,
     current_light: "red",
     current_light_timestamp: Date.now() - 14000,
+    camera_type: "traffic_light",
   },
   {
     id: "550e8400-e29b-41d4-a716-446655440003",
@@ -43,6 +45,7 @@ export const MOCK_CAMERAS: Camera[] = [
     wifi_signal: -71,
     current_light: "green",
     current_light_timestamp: Date.now() - 55000,
+    camera_type: "traffic_light",
   },
   {
     id: "550e8400-e29b-41d4-a716-446655440004",
@@ -56,6 +59,7 @@ export const MOCK_CAMERAS: Camera[] = [
     wifi_signal: -62,
     current_light: "amber",
     current_light_timestamp: Date.now() - 45000,
+    camera_type: "traffic_light",
   },
   {
     id: "550e8400-e29b-41d4-a716-446655440005",
@@ -69,6 +73,7 @@ export const MOCK_CAMERAS: Camera[] = [
     wifi_signal: -66,
     current_light: "green",
     current_light_timestamp: Date.now() - 28000,
+    camera_type: "traffic_light",
   },
   {
     id: "550e8400-e29b-41d4-a716-446655440006",
@@ -82,6 +87,7 @@ export const MOCK_CAMERAS: Camera[] = [
     wifi_signal: -82,
     current_light: "red",
     current_light_timestamp: Date.now() - 180000,
+    camera_type: "traffic_light",
   },
   {
     id: "550e8400-e29b-41d4-a716-446655440007",
@@ -93,8 +99,9 @@ export const MOCK_CAMERAS: Camera[] = [
     battery_level: 96.0,
     firmware_version: "2.1.0",
     wifi_signal: -55,
-    current_light: "green",
-    current_light_timestamp: Date.now() - 36000,
+    current_light: null,
+    current_light_timestamp: null,
+    camera_type: "camera",
   },
   {
     id: "550e8400-e29b-41d4-a716-446655440008",
@@ -108,6 +115,7 @@ export const MOCK_CAMERAS: Camera[] = [
     wifi_signal: -90,
     current_light: "red",
     current_light_timestamp: Date.now() - 890000,
+    camera_type: "traffic_light",
   },
 ];
 
@@ -191,6 +199,7 @@ export async function fetchCameraEvents(
         battery_level: 85,
         firmware_version: "2.1.0",
         wifi_signal: -65,
+        camera_type: "traffic_light",
       };
 
     const mockEventsList = MOCK_EVENTS[cameraId] || [

@@ -247,6 +247,11 @@ def _format_camera_row(row: sqlite3.Row) -> dict:
         d["location"] = d["location"]
     else:
         d["location"] = None
+    # Classify the camera by whether it has ever reported a traffic-light change.
+    # A camera that has never emitted a LIGHT_CHANGE (current_light is NULL) is
+    # treated as monitoring an unsignalized crossing ("camera"); otherwise it is
+    # a signalized "traffic_light" camera.
+    d["camera_type"] = "traffic_light" if d.get("current_light") is not None else "camera"
     return d
 
 

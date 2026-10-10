@@ -12,10 +12,11 @@ import {
   Copy,
   Check,
 } from "lucide-react";
+import { Cctv } from "lucide-react";
 import { Camera } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatRelativeTime } from "@/lib/utils";
+import { formatRelativeTime, isSignalized } from "@/lib/utils";
 
 interface CameraTelemetryHudProps {
   selectedCamera: Camera | null;
@@ -104,62 +105,84 @@ export function CameraTelemetryHud({
             </Button>
           </div>
 
-          {/* Active Traffic Signal HUD */}
-          <div className="flex items-center justify-between rounded-xl border border-[#e7e5e0] bg-[#fdfbfa] p-3">
-            <div className="space-y-0.5">
-              <span className="text-[10px] font-semibold text-[#6b675f]">
-                Active traffic signal
-              </span>
-              <div className="flex items-center gap-2">
-                <span
-                  className={`text-sm font-semibold capitalize ${
-                    selectedCamera.current_light === "green"
-                      ? "text-[#4f9d69]"
-                      : selectedCamera.current_light === "amber"
-                      ? "text-[#c08a2d]"
-                      : selectedCamera.current_light === "red"
-                      ? "text-[#c25450]"
-                      : "text-[#6b675f]"
-                  }`}
-                >
-                  {selectedCamera.current_light || "Syncing"}
+          {/* Active Traffic Signal HUD (signalized cameras only). */}
+          {isSignalized(selectedCamera) ? (
+            <div className="flex items-center justify-between rounded-xl border border-[#e7e5e0] bg-[#fdfbfa] p-3">
+              <div className="space-y-0.5">
+                <span className="text-[10px] font-semibold text-[#6b675f]">
+                  Active traffic signal
                 </span>
-                {selectedCamera.current_light_timestamp && (
-                  <span className="text-[10px] text-[#8a857c]">
-                    ({formatRelativeTime(selectedCamera.current_light_timestamp)})
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`text-sm font-semibold capitalize ${
+                      selectedCamera.current_light === "green"
+                        ? "text-[#4f9d69]"
+                        : selectedCamera.current_light === "amber"
+                        ? "text-[#c08a2d]"
+                        : selectedCamera.current_light === "red"
+                        ? "text-[#c25450]"
+                        : "text-[#6b675f]"
+                    }`}
+                  >
+                    {selectedCamera.current_light || "Syncing"}
                   </span>
-                )}
+                  {selectedCamera.current_light_timestamp && (
+                    <span className="text-[10px] text-[#8a857c]">
+                      ({formatRelativeTime(selectedCamera.current_light_timestamp)})
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* 3-Lamp Illuminated Signal Head */}
+              <div className="flex items-center gap-1.5 rounded-lg border border-[#e7e5e0] bg-[#f5f4ef] px-2.5 py-1.5">
+                <span
+                  className={`h-3 w-3 rounded-full transition-all ${
+                    selectedCamera.current_light === "red"
+                      ? "bg-[#d1584f] scale-110"
+                      : "bg-[#d1584f]/20"
+                  }`}
+                  title="Red Light"
+                />
+                <span
+                  className={`h-3 w-3 rounded-full transition-all ${
+                    selectedCamera.current_light === "amber"
+                      ? "bg-[#d99a2b] scale-110"
+                      : "bg-[#d99a2b]/20"
+                  }`}
+                  title="Amber Light"
+                />
+                <span
+                  className={`h-3 w-3 rounded-full transition-all ${
+                    selectedCamera.current_light === "green"
+                      ? "bg-[#4f9d69] scale-110"
+                      : "bg-[#4f9d69]/20"
+                  }`}
+                  title="Green Light"
+                />
               </div>
             </div>
-
-            {/* 3-Lamp Illuminated Signal Head */}
-            <div className="flex items-center gap-1.5 rounded-lg border border-[#e7e5e0] bg-[#f5f4ef] px-2.5 py-1.5">
-              <span
-                className={`h-3 w-3 rounded-full transition-all ${
-                  selectedCamera.current_light === "red"
-                    ? "bg-[#d1584f] scale-110"
-                    : "bg-[#d1584f]/20"
-                }`}
-                title="Red Light"
-              />
-              <span
-                className={`h-3 w-3 rounded-full transition-all ${
-                  selectedCamera.current_light === "amber"
-                    ? "bg-[#d99a2b] scale-110"
-                    : "bg-[#d99a2b]/20"
-                }`}
-                title="Amber Light"
-              />
-              <span
-                className={`h-3 w-3 rounded-full transition-all ${
-                  selectedCamera.current_light === "green"
-                    ? "bg-[#4f9d69] scale-110"
-                    : "bg-[#4f9d69]/20"
-                }`}
-                title="Green Light"
-              />
+          ) : (
+            /* Neutral panel for unsignalized-crossing cameras. */
+            <div className="flex items-center justify-between rounded-xl border border-[#e7e5e0] bg-[#fdfbfa] p-3">
+              <div className="space-y-0.5">
+                <span className="text-[10px] font-semibold text-[#6b675f]">
+                  Monitoring mode
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-[#6b675f]">
+                    Unsignalized crossing
+                  </span>
+                </div>
+                <span className="text-[10px] text-[#8a857c]">
+                  No traffic signal at this location
+                </span>
+              </div>
+              <div className="flex items-center justify-center rounded-lg border border-[#e7e5e0] bg-[#f5f4ef] px-2.5 py-1.5 text-[#8a857c]">
+                <Cctv className="h-5 w-5" />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Heartbeat Status Cards */}
           <div className="grid grid-cols-2 gap-2 text-xs">

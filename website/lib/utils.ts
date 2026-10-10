@@ -1,8 +1,19 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { Camera } from "./types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+/**
+ * Whether a camera monitors a signalized (traffic-light) crossing.
+ * Derived from the API-computed `camera_type`: "traffic_light" means the camera
+ * has reported light changes; "camera" (or unset) means an unsignalized crossing
+ * that should render with a neutral, signal-free treatment.
+ */
+export function isSignalized(camera: Camera): boolean {
+  return camera.camera_type === "traffic_light";
 }
 
 export function formatRelativeTime(timestampMs: number | null | undefined): string {

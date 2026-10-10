@@ -3,6 +3,7 @@
 import React, { useEffect, useRef } from "react";
 import L from "leaflet";
 import { Camera } from "@/lib/types";
+import { isSignalized } from "@/lib/utils";
 
 interface CameraMapProps {
   cameras: Camera[];
@@ -85,8 +86,13 @@ export default function CameraMap({
       // Maintenance/offline cameras render in a neutral tone at reduced opacity.
       const currentLight = camera.current_light;
       const isOperating = camera.state === "online";
+      const signalized = isSignalized(camera);
 
-      const lightColor = !isOperating
+      // Unsignalized cameras ("camera" type) never carry a traffic color: they
+      // render in a muted neutral stone tone regardless of state.
+      const lightColor = !signalized
+        ? "#8a857c"
+        : !isOperating
         ? "#8a857c"
         : currentLight === "green"
         ? "#4f9d69"
@@ -96,37 +102,20 @@ export default function CameraMap({
         ? "#d1584f"
         : "#20808d";
 
+      // Keep a subtle pulse ring for operating cameras of either type.
       const pulseHtml = isOperating
         ? `<span class="pulse-ring" style="background-color: ${lightColor}26; width: 46px; height: 46px;"></span>`
         : "";
 
-      // 3-lamp signal widget only lights up for operating cameras.
-      const isRedActive = isOperating && currentLight === "red";
-      const isAmberActive = isOperating && currentLight === "amber";
-      const isGreenActive = isOperating && currentLight === "green";
+      // 3-lamp signal widget only lights up for operating signalized cameras.
+      const isRedActive = signalized && isOperating && currentLight === "red";
+      const isAmberActive = signalized && isOperating && currentLight === "amber";
+      const isGreenActive = signalized && isOperating && currentLight === "green";
 
-      const customIcon = L.divIcon({
-        className: "custom-camera-marker-div",
-        iconSize: [44, 44],
-        iconAnchor: [22, 22],
-        html: `
-          <div class="camera-marker-container ${isSelected ? "camera-marker-selected" : ""}" style="width: 44px; height: 44px; cursor: pointer;">
-            ${pulseHtml}
-            <div style="
-              width: 36px;
-              height: 36px;
-              border-radius: 50%;
-              background: #ffffff;
-              border: 2.5px solid ${lightColor};
-              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2)${isSelected ? ", 0 0 0 2px " + lightColor + "40" : ""};
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              position: relative;
-              z-index: 2;
-              opacity: ${isOperating ? "1" : "0.55"};
-            ">
-              <!-- Mini 3-lamp traffic signal widget -->
+      // Signalized cameras show the mini 3-lamp traffic signal widget;
+      // unsignalized cameras show a neutral camera glyph instead.
+      const innerGlyph = signalized
+        ? `
               <div style="display: flex; flex-direction: column; align-items: center; gap: 2.5px;">
                 <span style="
                   width: 6px;
@@ -149,7 +138,35 @@ export default function CameraMap({
                   background: ${isGreenActive ? "#4f9d69" : "#4f9d6933"};
                   box-shadow: ${isGreenActive ? "0 0 3px #4f9d6999" : "none"};
                 "></span>
-              </div>
+              </div>`
+        : `
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${lightColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path>
+                <circle cx="12" cy="13" r="3"></circle>
+              </svg>`;
+
+      const customIcon = L.divIcon({
+        className: "custom-camera-marker-div",
+        iconSize: [44, 44],
+        iconAnchor: [22, 22],
+        html: `
+          <div class="camera-marker-container ${isSelected ? "camera-marker-selected" : ""}" style="width: 44px; height: 44px; cursor: pointer;">
+            ${pulseHtml}
+            <div style="
+              width: 36px;
+              height: 36px;
+              border-radius: 50%;
+              background: #ffffff;
+              border: 2.5px solid ${lightColor};
+              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2)${isSelected ? ", 0 0 0 2px " + lightColor + "40" : ""};
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              position: relative;
+              z-index: 2;
+              opacity: ${isOperating ? "1" : "0.55"};
+            ">
+              ${innerGlyph}
             </div>
           </div>
         `,
@@ -165,8 +182,13 @@ export default function CameraMap({
         });
       });
 
-      // Tooltip: operating cameras show their live signal; others show state only.
-      const tooltipLabel = isOperating
+      // Tooltip: signalized operating cameras show their live signal;
+      // unsignalized cameras show a neutral "MONITORING" label; others show state.
+      const tooltipLabel = !signalized
+        ? isOperating
+          ? "MONITORING"
+          : camera.state.toUpperCase()
+        : isOperating
         ? `${currentLight ? currentLight.toUpperCase() : "SYNCING"} SIGNAL`
         : camera.state.toUpperCase();
       marker.bindTooltip(
