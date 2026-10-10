@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import {
   Search,
   Cctv,
-  Battery,
   Wifi,
   RefreshCw,
   ChevronRight,
@@ -135,39 +134,15 @@ export function CameraSidebar({
                     : "border-[#e7e5e0] bg-[#fdfbfa] hover:border-[#d6d3cc] hover:bg-[#f5f4ef]"
                 }`}
               >
-                {/* Top Row: Name and Status Dot */}
+                {/* Top Row: Name */}
                 <div className="flex items-center justify-between gap-1">
-                  <div className="flex items-center gap-2 truncate">
-                    <span
-                      className={`h-2.5 w-2.5 rounded-full shrink-0 ${
-                        camera.state !== "online"
-                          ? "bg-[#b8b3aa] opacity-50"
-                          : !signalized
-                          ? "bg-[#20808d]"
-                          : camera.current_light === "green"
-                          ? "bg-[#4f9d69]"
-                          : camera.current_light === "amber"
-                          ? "bg-[#c08a2d]"
-                          : camera.current_light === "red"
-                          ? "bg-[#c25450]"
-                          : "bg-[#20808d]"
-                      }`}
-                      title={
-                        camera.state === "online" && signalized && camera.current_light
-                          ? `Traffic Light: ${camera.current_light}`
-                          : camera.state === "online" && !signalized
-                          ? "Unsignalized crossing"
-                          : camera.state
-                      }
-                    />
-                    <h4
-                      className={`text-xs font-semibold truncate ${
-                        isSelected ? "text-[#1f1915]" : "text-[#1f1915] group-hover:text-[#1f1915]"
-                      }`}
-                    >
-                      {camera.name}
-                    </h4>
-                  </div>
+                  <h4
+                    className={`text-xs font-semibold truncate ${
+                      isSelected ? "text-[#1f1915]" : "text-[#1f1915] group-hover:text-[#1f1915]"
+                    }`}
+                  >
+                    {camera.name}
+                  </h4>
                   <ChevronRight
                     className={`h-3.5 w-3.5 shrink-0 transition-transform ${
                       isSelected
@@ -177,10 +152,12 @@ export function CameraSidebar({
                   />
                 </div>
 
-                {/* Subtitle / ID */}
+                {/* Subtitle / Coordinates & Heartbeat */}
                 <div className="mt-1 flex items-center justify-between text-[11px] text-[#6b675f]">
                   <span className="font-mono text-[10px] text-[#8a857c]">
-                    ID: {camera.id.slice(0, 8)}...
+                    {Array.isArray(camera.location)
+                      ? `${camera.location[0].toFixed(3)}, ${camera.location[1].toFixed(3)}`
+                      : "GPS Syncing"}
                   </span>
                   <span className="text-[10px] text-[#8a857c]">
                     {formatRelativeTime(camera.last_heartbeat)}
@@ -189,14 +166,47 @@ export function CameraSidebar({
 
                 {/* Bottom Row Telemetry Micro-Badges */}
                 <div className="mt-2 flex items-center justify-between pt-1.5 border-t border-[#e7e5e0] text-[10px] text-[#6b675f]">
-                  <div className="flex items-center gap-1">
-                    <Battery className="h-3 w-3 text-[#8a857c]" />
-                    <span>
-                      {camera.battery_level !== null && camera.battery_level !== undefined
-                        ? `${Math.round(camera.battery_level)}%`
-                        : "--"}
-                    </span>
-                  </div>
+                  {/* Traffic light symbol (3-lamp horizontal) */}
+                  {signalized ? (
+                    <div
+                      className="flex items-center gap-1 rounded border border-[#e7e5e0] bg-[#f5f4ef] px-1.5 py-0.5"
+                      title={
+                        camera.state === "online" && camera.current_light
+                          ? `Traffic Light: ${camera.current_light}`
+                          : "Traffic signal syncing"
+                      }
+                    >
+                      <span
+                        className={`h-2 w-2 rounded-full transition-all ${
+                          camera.state === "online" && camera.current_light === "red"
+                            ? "bg-[#d1584f]"
+                            : "bg-[#d1584f]/20"
+                        }`}
+                      />
+                      <span
+                        className={`h-2 w-2 rounded-full transition-all ${
+                          camera.state === "online" && camera.current_light === "amber"
+                            ? "bg-[#d99a2b]"
+                            : "bg-[#d99a2b]/20"
+                        }`}
+                      />
+                      <span
+                        className={`h-2 w-2 rounded-full transition-all ${
+                          camera.state === "online" && camera.current_light === "green"
+                            ? "bg-[#4f9d69]"
+                            : "bg-[#4f9d69]/20"
+                        }`}
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      className="flex items-center rounded border border-[#e7e5e0] bg-[#f5f4ef] px-1.5 py-0.5 text-[#8a857c]"
+                      title="Unsignalized crossing"
+                    >
+                      <Cctv className="h-3 w-3" />
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-1">
                     <Wifi className="h-3 w-3 text-[#8a857c]" />
                     <span>
@@ -205,29 +215,8 @@ export function CameraSidebar({
                         : "--"}
                     </span>
                   </div>
+
                   <div className="flex items-center gap-1.5">
-                    {camera.state === "online" && signalized && camera.current_light && (
-                      <span
-                        className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-semibold capitalize ${
-                          camera.current_light === "green"
-                            ? "bg-[#4f9d69]/10 text-[#3f7d54] border border-[#4f9d69]/30"
-                            : camera.current_light === "amber"
-                            ? "bg-[#c08a2d]/10 text-[#9a6e22] border border-[#c08a2d]/30"
-                            : "bg-[#c25450]/10 text-[#a8423e] border border-[#c25450]/30"
-                        }`}
-                      >
-                        <span
-                          className={`h-1.5 w-1.5 rounded-full ${
-                            camera.current_light === "green"
-                              ? "bg-[#4f9d69]"
-                              : camera.current_light === "amber"
-                              ? "bg-[#c08a2d]"
-                              : "bg-[#c25450]"
-                          }`}
-                        />
-                        {camera.current_light}
-                      </span>
-                    )}
                     <Badge
                       variant={
                         camera.state === "online"

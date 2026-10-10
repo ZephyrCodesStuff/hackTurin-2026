@@ -118,17 +118,56 @@ curl http://localhost:8000/cameras/550e8400-e29b-41d4-a716-446655440000/events
 
 ---
 
-## 5. Camera Heartbeat Endpoint
+## 5. Camera Edit Endpoint (PATCH)
 
-Cameras periodically broadcast their operational state, location, and telemetry:
+Modify camera configuration: `name`, `location` (coordinates `[lat, lon]` or string), and `state` (`"online"`, `"maintenance"`, `"offline"`).
+
+```sh
+curl -X PATCH http://localhost:8000/cameras/550e8400-e29b-41d4-a716-446655440000/edit \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Piazza Castello / Via Po",
+    "location": [45.0710, 7.6865],
+    "state": "online"
+  }'
+```
+
+**Supported Routes:**
+* `PATCH /cameras/{camera_id}/edit`
+* `PATCH /cameras/{camera_id}`
+* `PATCH /edit` (with `{"camera_id": "...", ...}` or query `?camera_id=...`)
+
+**Fields (all optional, send any combination):**
+* **`name`**: string (e.g. `"Piazza San Carlo"`)
+* **`location`**: `[latitude, longitude]` tuple/list of floats or string coordinate
+* **`state`**: `"online"` | `"maintenance"` | `"offline"`
+
+**Response (`200 OK`):**
+```json
+{
+  "message": "Camera updated successfully",
+  "camera_id": "550e8400-e29b-41d4-a716-446655440000",
+  "camera": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Piazza Castello / Via Po",
+    "location": [45.0710, 7.6865],
+    "state": "online",
+    ...
+  }
+}
+```
+
+---
+
+## 6. Camera Heartbeat Endpoint
+
+Cameras periodically broadcast their battery, firmware, and telemetry metadata:
 
 ```sh
 curl -X POST http://localhost:8000/cameras/550e8400-e29b-41d4-a716-446655440000/heartbeat \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "state": "online",
-    "location": [52.5200, 13.4050],
     "last_event_timestamp": 1700000045000,
     "battery_level": 88.5,
     "firmware_version": "1.0.4",
@@ -136,14 +175,15 @@ curl -X POST http://localhost:8000/cameras/550e8400-e29b-41d4-a716-446655440000/
   }'
 ```
 
+> **Note on Deprecation:** Modifying `name`, `location`, or `state` via heartbeat or event ingestion is deprecated and disabled. Use the `PATCH /cameras/{camera_id}/edit` endpoint above to update camera metadata.
+
 **Fields:**
-* **`state`**: `"online"` | `"maintenance"` | `"offline"` (default: `"online"`)
-* **`location`**: `[latitude, longitude]` tuple of floats (e.g. `[52.52, 13.405]`)
 * **`last_heartbeat`**: epoch ms (optional, defaults to current server time)
 * **`last_event_timestamp`**: epoch ms (optional)
 * **`battery_level`**: float `0.0`–`100.0` percentage (optional)
 * **`firmware_version`**: string (optional)
 * **`wifi_signal`**: integer RSSI in dBm (optional)
+* **`name`**, **`location`**, **`state`**: *(deprecated — ignored on existing cameras)*
 
 ---
 

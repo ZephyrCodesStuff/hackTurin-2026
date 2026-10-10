@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import Enum
 import time
 from typing import Annotated, List, Literal, Optional, Union
@@ -87,3 +89,12 @@ class CameraHeartbeatPayload(StrictBaseModel):
     battery_level: Optional[float] = Field(None, ge=0.0, le=100.0, description="Battery percentage (0-100)")
     firmware_version: Optional[str] = Field(None, description="Device firmware version string")
     wifi_signal: Optional[int] = Field(None, description="Signal strength RSSI in dBm")
+
+
+class CameraEditPayload(StrictBaseModel):
+    camera_id: Optional[UUID] = Field(None, description="Camera UUID (required if not provided in URL path)")
+    name: Optional[str] = Field(None, description="Updated friendly name for the camera")
+    location: Optional[Union[tuple[float, float], List[float], str]] = Field(
+        None, description="Updated coordinates [latitude, longitude] or location string"
+    )
+    state: Optional[CameraState] = Field(None, description="Updated camera operational state")

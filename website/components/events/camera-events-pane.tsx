@@ -29,7 +29,7 @@ interface CameraEventsPaneProps {
   isLoading: boolean;
   onClose: () => void;
   onRefresh: () => void;
-  onEditCamera?: (camera: Camera) => void;
+  initialFilter?: EventFilter;
 }
 
 type EventFilter = "all" | "crash" | "light_change" | "illegal_crossing" | "object_detected";
@@ -40,10 +40,21 @@ export function CameraEventsPane({
   isLoading,
   onClose,
   onRefresh,
-  onEditCamera,
+  initialFilter = "all",
 }: CameraEventsPaneProps) {
-  const [viewMode, setViewMode] = useState<"logs" | "metrics">("logs");
-  const [filter, setFilter] = useState<EventFilter>("all");
+  const [userSelectedFilter, setUserSelectedFilter] = useState<EventFilter | null>(null);
+  const [prevInitialFilter, setPrevInitialFilter] = useState<EventFilter>(initialFilter);
+  const [prevCameraId, setPrevCameraId] = useState<string | undefined>(camera?.id);
+
+  if (initialFilter !== prevInitialFilter || camera?.id !== prevCameraId) {
+    setPrevInitialFilter(initialFilter);
+    setPrevCameraId(camera?.id);
+    setUserSelectedFilter(null);
+  }
+
+  const filter = userSelectedFilter ?? initialFilter;
+  const setFilter = (newFilter: EventFilter) => setUserSelectedFilter(newFilter);
+
   const [isMinimized, setIsMinimized] = useState(false);
   const [activePhoto, setActivePhoto] = useState<{
     photoId: string;

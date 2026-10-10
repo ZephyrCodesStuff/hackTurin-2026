@@ -3,8 +3,6 @@
 import React, { useState } from "react";
 import {
   Activity,
-  Battery,
-  BatteryWarning,
   Wifi,
   Cpu,
   Clock,
@@ -224,46 +222,11 @@ export function CameraTelemetryHud({
 
           {/* Hardware Telemetry Specs */}
           <div className="space-y-2 rounded-xl border border-[#e7e5e0] bg-[#fdfbfa] p-3">
-            {/* Battery */}
-            <div>
-              <div className="flex items-center justify-between text-xs mb-1">
-                <span className="flex items-center gap-1.5 text-[#6b675f]">
-                  {selectedCamera.battery_level !== null &&
-                  selectedCamera.battery_level > 20 ? (
-                    <Battery className="h-3.5 w-3.5 text-[#4f9d69]" />
-                  ) : (
-                    <BatteryWarning className="h-3.5 w-3.5 text-[#c25450]" />
-                  )}
-                  Battery level
-                </span>
-                <span className="font-mono font-semibold text-[#1f1915]">
-                  {selectedCamera.battery_level !== null &&
-                  selectedCamera.battery_level !== undefined
-                    ? `${selectedCamera.battery_level.toFixed(1)}%`
-                    : "N/A"}
-                </span>
-              </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#e7e5e0]">
-                <div
-                  className={`h-full transition-all ${
-                    (selectedCamera.battery_level ?? 0) > 50
-                      ? "bg-[#4f9d69]"
-                      : (selectedCamera.battery_level ?? 0) > 20
-                      ? "bg-[#c08a2d]"
-                      : "bg-[#c25450]"
-                  }`}
-                  style={{
-                    width: `${Math.min(
-                      100,
-                      Math.max(0, selectedCamera.battery_level ?? 0)
-                    )}%`,
-                  }}
-                />
-              </div>
-            </div>
+
+            {/* battery hidden cause it makes no sense in this device */}
 
             {/* Wifi & Firmware */}
-            <div className="flex items-center justify-between pt-1 border-t border-[#e7e5e0] text-xs">
+            <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-1.5 text-[#6b675f]">
                 <Wifi className="h-3.5 w-3.5 text-[#20808d]" />
                 <span>Wi-Fi signal</span>

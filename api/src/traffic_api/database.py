@@ -105,16 +105,14 @@ def reset_database() -> None:
                     pass
 
 
-def upsert_camera(camera_id: str, name: str, location: str) -> bool:
-    """Insert camera record if it doesn't exist, preserving existing names and locations."""
+def upsert_camera(camera_id: str, name: str = "Unknown", location: str = "Unknown") -> bool:
+    """Insert camera record if it doesn't already exist. Does not update name, location, or state for existing cameras."""
     with get_connection() as connection:
         cursor = connection.execute(
             """
-            INSERT INTO CAMERA (id, name, location)
-            VALUES (?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                name = COALESCE(CAMERA.name, excluded.name),
-                location = COALESCE(CAMERA.location, excluded.location)
+            INSERT INTO CAMERA (id, name, location, state)
+            VALUES (?, ?, ?, 'online')
+            ON CONFLICT(id) DO NOTHING
             """,
             (camera_id, name, location),
         )
@@ -123,70 +121,35 @@ def upsert_camera(camera_id: str, name: str, location: str) -> bool:
 
 def update_camera_details(
     camera_id: str,
-    name: str | None = None,
-    location: str | None = None,
-    latitude: float | None = None,
-    longitude: float | None = None,
-    state: str | None = None,
-) -> dict | None:
-    """Update editable fields for a camera (name, location, lat/lon, state)."""
-    updates = []
-    params = []
-    if name is not None:
-        updates.append("name = ?")
-        params.append(name)
-    if location is not None:
-        updates.append("location = ?")
-        params.append(location)
-    elif latitude is not None and longitude is not None:
-        updates.append("location = ?")
-        params.append(f"({latitude}, {longitude})")
-    if latitude is not None:
-        updates.append("latitude = ?")
-        params.append(latitude)
-    if longitude is not None:
-        updates.append("longitude = ?")
-        params.append(longitude)
-    if state is not None:
-        updates.append("state = ?")
-        params.append(state)
-
-    if not updates:
-        return get_camera_by_id(camera_id)
-
-    params.append(camera_id)
-    with get_connection() as connection:
-        connection.execute(
-            f"UPDATE CAMERA SET {', '.join(updates)} WHERE id = ?",
-            params,
-        )
-        connection.commit()
-    return get_camera_by_id(camera_id)
-
-
-def update_camera_heartbeat(
-    camera_id: str,
-    state: str,
     last_heartbeat: int | None = None,
     last_event_timestamp: int | None = None,
     battery_level: float | None = None,
     firmware_version: str | None = None,
     wifi_signal: int | None = None,
+    state: str | None = None,
+    name: str | None = None,
+    latitude: float | None = None,
+    longitude: float | None = None,
 ) -> dict:
-    """Upsert camera heartbeat telemetry (state, battery, firmware, wifi) without touching name or location."""
+    """Update camera heartbeat telemetry.
+
+    Note: Modifying name, location, and state via heartbeat is deprecated;
+    use edit_camera (PATCH /cameras/{camera_id}/edit) instead.
+    """
     default_name = f"Camera {camera_id[:8]}"
+    default_location = "Unknown"
 
     with get_connection() as connection:
         connection.execute(
             """
             INSERT INTO CAMERA (
                 id, name, location, state,
+                id, name, location, state,
                 last_heartbeat, last_event_timestamp, battery_level,
                 firmware_version, wifi_signal
             )
-            VALUES (?, ?, 'Unknown', ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, 'online', ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
-                state = excluded.state,
                 last_heartbeat = coalesce(excluded.last_heartbeat, CAMERA.last_heartbeat),
                 last_event_timestamp = coalesce(excluded.last_event_timestamp, CAMERA.last_event_timestamp),
                 battery_level = coalesce(excluded.battery_level, CAMERA.battery_level),
@@ -196,7 +159,7 @@ def update_camera_heartbeat(
             (
                 camera_id,
                 default_name,
-                state,
+                default_location,
                 last_heartbeat,
                 last_event_timestamp,
                 battery_level,
@@ -205,6 +168,51 @@ def update_camera_heartbeat(
             ),
         )
     return get_camera_by_id(camera_id)  # type: ignore
+
+
+def edit_camera(
+    camera_id: str,
+    name: str | None = None,
+    location: str | None = None,
+    latitude: float | None = None,
+    longitude: float | None = None,
+    state: str | None = None,
+    update_location: bool = False,
+) -> dict | None:
+    """Update specific fields of an existing camera record and return the updated camera."""
+    existing = get_camera_by_id(camera_id)
+    if not existing:
+        return None
+
+    updates = []
+    params = []
+
+    if name is not None:
+        updates.append("name = ?")
+        params.append(name)
+
+    if update_location:
+        updates.append("location = ?")
+        params.append(location if location is not None else "Unknown")
+        updates.append("latitude = ?")
+        params.append(latitude)
+        updates.append("longitude = ?")
+        params.append(longitude)
+
+    if state is not None:
+        updates.append("state = ?")
+        params.append(state)
+
+    if updates:
+        params.append(camera_id)
+        with get_connection() as connection:
+            connection.execute(
+                f"UPDATE CAMERA SET {', '.join(updates)} WHERE id = ?",
+                params,
+            )
+
+    return get_camera_by_id(camera_id)
+
 
 
 def insert_events(camera_id: str, events: list) -> dict[str, int]:

@@ -1,6 +1,10 @@
+from __future__ import annotations
+
 import logging
 import os
+import re
 from contextlib import asynccontextmanager
+from typing import Optional
 from uuid import UUID, uuid4
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
@@ -22,6 +26,7 @@ from traffic_api.auth_user import (
 )
 from traffic_api.database import (
     PHOTOS_DIR,
+    edit_camera,
     get_all_cameras,
     get_camera_by_id,
     get_camera_events,
@@ -32,8 +37,7 @@ from traffic_api.database import (
     update_camera_heartbeat,
     upsert_camera,
 )
-from traffic_api.structs import CameraHeartbeatPayload, IngestPayload
-from traffic_api.user_db import get_user_by_username, get_user_camera_ids
+from traffic_api.structs import CameraEditPayload, CameraHeartbeatPayload, IngestPayload
 
 logger = logging.getLogger("traffic_api")
 
@@ -181,47 +185,97 @@ async def get_camera(
     return {"camera": camera}
 
 
+@app.patch("/cameras/{camera_id}/edit")
 @app.patch("/cameras/{camera_id}")
-async def patch_camera(
+async def edit_camera_endpoint(
     camera_id: UUID,
-    body: CameraPatchPayload,
-    user: Optional[dict] = Depends(get_current_user_optional),
-    camera_token: Optional[CameraToken] = Depends(get_current_camera_token_optional),
+    body: CameraEditPayload,
 ):
-    """Authorized endpoint: edit camera details for an assigned user or the camera itself."""
+    """Update camera details: name, location, and operational state (online, maintenance, offline)."""
     camera_id_str = str(camera_id)
-
-    # 1. Check if authorized via camera token
-    is_authorized_camera = camera_token and camera_id_str in camera_token.camera_ids
-
-    # 2. Check if authorized via user session
-    is_authorized_user = False
-    if user:
-        allowed_ids = set(get_user_camera_ids(user["id"], user["username"]))
-        if camera_id_str in allowed_ids:
-            is_authorized_user = True
-
-    if not is_authorized_camera and not is_authorized_user:
-        raise HTTPException(
-            status_code=403,
-            detail="Forbidden: You do not have access to edit this camera",
-        )
-
-    camera = get_camera_by_id(camera_id_str)
-    if not camera:
+    existing = get_camera_by_id(camera_id_str)
+    if not existing:
         raise HTTPException(status_code=404, detail="Camera not found")
 
-    updated = update_camera_details(
+    unset_fields = body.model_dump(exclude_unset=True)
+    if not unset_fields:
+        return {
+            "message": "No changes specified",
+            "camera_id": camera_id_str,
+            "camera": existing,
+        }
+
+    name = body.name if "name" in unset_fields else None
+    state = body.state.value if "state" in unset_fields and body.state else None
+
+    update_location = "location" in unset_fields
+    location_str = None
+    lat = None
+    lon = None
+
+    if update_location:
+        if body.location is None:
+            location_str = "Unknown"
+            lat = None
+            lon = None
+        elif isinstance(body.location, (list, tuple)) and len(body.location) >= 2:
+            lat = float(body.location[0])
+            lon = float(body.location[1])
+            location_str = f"({lat}, {lon})"
+        elif isinstance(body.location, str):
+            location_str = body.location.strip()
+            matches = re.findall(r"[-+]?\d*\.?\d+", location_str)
+            if len(matches) >= 2:
+                lat = float(matches[0])
+                lon = float(matches[1])
+            else:
+                lat = None
+                lon = None
+        else:
+            raise HTTPException(
+                status_code=422,
+                detail="Location must be a [latitude, longitude] list or a location string",
+            )
+
+    updated_camera = edit_camera(
         camera_id=camera_id_str,
-        name=body.name,
-        location=body.location,
-        latitude=body.latitude,
-        longitude=body.longitude,
-        state=body.state,
+        name=name,
+        location=location_str,
+        latitude=lat,
+        longitude=lon,
+        state=state,
+        update_location=update_location,
     )
-    actor = f"Camera {camera_id_str[:8]}" if is_authorized_camera else f"User {user['username']}"
-    logger.info("%s updated camera %s", actor, camera_id_str)
-    return {"camera": updated}
+
+    logger.info(
+        "Camera %s edited: name=%s, state=%s, location=%s",
+        camera_id_str,
+        name,
+        state,
+        location_str,
+    )
+
+    return {
+        "message": "Camera updated successfully",
+        "camera_id": camera_id_str,
+        "camera": updated_camera,
+    }
+
+
+@app.patch("/edit")
+async def edit_camera_query_endpoint(
+    body: CameraEditPayload,
+    camera_id: Optional[UUID] = None,
+):
+    """Fallback endpoint for PATCH /edit with camera_id query parameter or body field."""
+    target_id = camera_id or body.camera_id
+    if not target_id:
+        raise HTTPException(
+            status_code=422,
+            detail="Camera ID required in query parameter (?camera_id=...) or request body ({'camera_id': ...})",
+        )
+    return await edit_camera_endpoint(camera_id=target_id, body=body)
+
 
 
 @app.get("/cameras/{camera_id}/events")
@@ -257,18 +311,15 @@ async def camera_heartbeat(
     body: CameraHeartbeatPayload,
     token: CameraToken = Depends(require_camera_access),
 ):
-    """Camera heartbeat: broadcasts operational state, battery, and diagnostic telemetry only."""
+    """Camera heartbeat: broadcasts battery, firmware, wifi, and diagnostic metadata.
+
+    Note: Modifying name, location, or state via heartbeat is deprecated;
+    use PATCH /cameras/{camera_id}/edit instead.
+    """
     camera_id_str = str(camera_id)
-    existing_camera = get_camera_by_id(camera_id_str)
-    if existing_camera and existing_camera.get("state") == "offline":
-        raise HTTPException(
-            status_code=409,
-            detail="Camera is offline (taken down). Heartbeats are rejected.",
-        )
 
     updated_camera = update_camera_heartbeat(
         camera_id=camera_id_str,
-        state=body.state.value,
         last_heartbeat=body.last_heartbeat,
         last_event_timestamp=body.last_event_timestamp,
         battery_level=body.battery_level,
@@ -277,10 +328,10 @@ async def camera_heartbeat(
     )
 
     logger.info(
-        "Heartbeat received from camera %s: state=%s, battery=%s, wifi=%s",
+        "Heartbeat received from camera %s: battery=%s, wifi=%s",
         camera_id_str,
-        body.state.value,
         body.battery_level,
+        body.wifi_signal,
         body.wifi_signal,
     )
 

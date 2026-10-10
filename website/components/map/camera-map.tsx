@@ -1,25 +1,31 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import L from "leaflet";
 import { Camera } from "@/lib/types";
-import { isSignalized } from "@/lib/utils";
+import { isSignalized, getCameraCoordinatesWithFallback } from "@/lib/utils";
 
 interface CameraMapProps {
   cameras: Camera[];
   selectedCameraId: string | null;
   onSelectCamera: (camera: Camera) => void;
+  focusTarget?: { cameraId: string; timestamp: number } | null;
+  isPaneOpen?: boolean;
 }
 
 export default function CameraMap({
   cameras,
   selectedCameraId,
   onSelectCamera,
+  focusTarget,
+  isPaneOpen = false,
 }: CameraMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
   const hasFittedBoundsRef = useRef(false);
+  const lastFocusTimestampRef = useRef<number | null>(null);
+  const lastSelectedCameraIdRef = useRef<string | null>(null);
 
   // Initialize Map
   useEffect(() => {
@@ -53,6 +59,46 @@ export default function CameraMap({
     };
   }, []);
 
+  // Dedicated camera transport function
+  const flyToCamera = useCallback(
+    (targetCameraId: string, duration = 1.0) => {
+      const map = mapInstanceRef.current;
+      if (!map) return;
+
+      const camera = cameras.find((c) => c.id === targetCameraId);
+      if (!camera) return;
+
+      const [lat, lon] = getCameraCoordinatesWithFallback(camera);
+
+      // Invalidate layout size in case drawer was just toggled
+      map.invalidateSize();
+
+      const zoom = Math.max(map.getZoom(), 16);
+      let targetLatLng: L.LatLngExpression = [lat, lon];
+
+      // If bottom pane is open (~300px height), offset map center downwards
+      // so the marker rests comfortably in the visible upper half of the viewport
+      if (isPaneOpen) {
+        const point = map.project([lat, lon], zoom);
+        const offsetPoint = L.point(point.x, point.y + 110);
+        targetLatLng = map.unproject(offsetPoint, zoom);
+      }
+
+      map.flyTo(targetLatLng, zoom, {
+        duration,
+      });
+
+      // Open marker tooltip after transport starts
+      setTimeout(() => {
+        const marker = markersRef.current.get(targetCameraId);
+        if (marker) {
+          marker.openTooltip();
+        }
+      }, Math.max(300, Math.round(duration * 600)));
+    },
+    [cameras, isPaneOpen]
+  );
+
   // Update Markers when cameras list or selection changes
   useEffect(() => {
     const map = mapInstanceRef.current;
@@ -65,31 +111,16 @@ export default function CameraMap({
     const bounds: [number, number][] = [];
 
     cameras.forEach((camera) => {
-      let lat: number | null = null;
-      let lon: number | null = null;
-
-      if (Array.isArray(camera.location) && camera.location.length >= 2) {
-        lat = camera.location[0];
-        lon = camera.location[1];
-      } else if (camera.latitude != null && camera.longitude != null) {
-        lat = camera.latitude;
-        lon = camera.longitude;
-      }
-
-      if (lat == null || lon == null) return;
-
+      const [lat, lon] = getCameraCoordinatesWithFallback(camera);
       bounds.push([lat, lon]);
 
       const isSelected = selectedCameraId === camera.id;
 
       // Traffic-light color only applies to operating (online) cameras.
-      // Maintenance/offline cameras render in a neutral tone at reduced opacity.
       const currentLight = camera.current_light;
       const isOperating = camera.state === "online";
       const signalized = isSignalized(camera);
 
-      // Unsignalized cameras ("camera" type) never carry a traffic color: they
-      // render in a muted neutral stone tone regardless of state.
       const lightColor = !signalized
         ? "#8a857c"
         : !isOperating
@@ -102,18 +133,16 @@ export default function CameraMap({
         ? "#d1584f"
         : "#20808d";
 
-      // Keep a subtle pulse ring for operating cameras of either type.
+      // Subtle pulse ring for operating cameras
       const pulseHtml = isOperating
         ? `<span class="pulse-ring" style="background-color: ${lightColor}26; width: 46px; height: 46px;"></span>`
         : "";
 
-      // 3-lamp signal widget only lights up for operating signalized cameras.
+      // 3-lamp signal widget lights up for operating signalized cameras
       const isRedActive = signalized && isOperating && currentLight === "red";
       const isAmberActive = signalized && isOperating && currentLight === "amber";
       const isGreenActive = signalized && isOperating && currentLight === "green";
 
-      // Signalized cameras show the mini 3-lamp traffic signal widget;
-      // unsignalized cameras show a neutral camera glyph instead.
       const innerGlyph = signalized
         ? `
               <div style="display: flex; flex-direction: column; align-items: center; gap: 2.5px;">
@@ -177,13 +206,10 @@ export default function CameraMap({
       // Click handler
       marker.on("click", () => {
         onSelectCamera(camera);
-        map.flyTo([lat, lon], Math.max(map.getZoom(), 15), {
-          duration: 0.8,
-        });
+        flyToCamera(camera.id, 0.8);
       });
 
-      // Tooltip: signalized operating cameras show their live signal;
-      // unsignalized cameras show a neutral "MONITORING" label; others show state.
+      // Tooltip
       const tooltipLabel = !signalized
         ? isOperating
           ? "MONITORING"
@@ -191,6 +217,7 @@ export default function CameraMap({
         : isOperating
         ? `${currentLight ? currentLight.toUpperCase() : "SYNCING"} SIGNAL`
         : camera.state.toUpperCase();
+
       marker.bindTooltip(
         `<strong style="color: #1f1915;">${camera.name}</strong><br/>
          <div style="display: flex; align-items: center; gap: 6px; margin-top: 3px;">
@@ -216,33 +243,29 @@ export default function CameraMap({
       map.fitBounds(bounds, { padding: [60, 60], maxZoom: 15 });
       hasFittedBoundsRef.current = true;
     }
-  }, [cameras, selectedCameraId, onSelectCamera]);
+  }, [cameras, selectedCameraId, onSelectCamera, flyToCamera]);
 
-  // Fly to selected camera when selectedCameraId updates externally
+  // Handle explicit focus target dispatch (e.g. from toast click)
   useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map || !selectedCameraId) return;
+    if (!focusTarget) return;
+    if (lastFocusTimestampRef.current === focusTarget.timestamp) return;
+    lastFocusTimestampRef.current = focusTarget.timestamp;
+    lastSelectedCameraIdRef.current = focusTarget.cameraId;
 
-    const camera = cameras.find((c) => c.id === selectedCameraId);
-    if (!camera) return;
+    flyToCamera(focusTarget.cameraId, 1.0);
+  }, [focusTarget, flyToCamera]);
 
-    let lat: number | null = null;
-    let lon: number | null = null;
-
-    if (Array.isArray(camera.location) && camera.location.length >= 2) {
-      lat = camera.location[0];
-      lon = camera.location[1];
-    } else if (camera.latitude != null && camera.longitude != null) {
-      lat = camera.latitude;
-      lon = camera.longitude;
+  // Handle external selectedCameraId changes if not already dispatched by focusTarget
+  useEffect(() => {
+    if (!selectedCameraId) {
+      lastSelectedCameraIdRef.current = null;
+      return;
     }
-
-    if (lat != null && lon != null) {
-      map.flyTo([lat, lon], 16, {
-        duration: 1.0,
-      });
+    if (lastSelectedCameraIdRef.current !== selectedCameraId) {
+      lastSelectedCameraIdRef.current = selectedCameraId;
+      flyToCamera(selectedCameraId, 0.8);
     }
-  }, [selectedCameraId, cameras]);
+  }, [selectedCameraId, flyToCamera]);
 
   return (
     <div className="relative h-full w-full">

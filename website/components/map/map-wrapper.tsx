@@ -20,6 +20,8 @@ interface MapWrapperProps {
   cameras: Camera[];
   selectedCameraId: string | null;
   onSelectCamera: (camera: Camera) => void;
+  focusTarget?: { cameraId: string; timestamp: number } | null;
+  isPaneOpen?: boolean;
 }
 
 export function MapWrapper(props: MapWrapperProps) {
