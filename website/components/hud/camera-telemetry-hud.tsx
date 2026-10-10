@@ -50,7 +50,7 @@ export function CameraTelemetryHud({
   const offlineCount = allCameras.filter((c) => c.state === "offline").length;
 
   return (
-    <div className="absolute top-4 right-4 z-20 w-80 sm:w-88 rounded-2xl border border-slate-700/60 bg-slate-950/85 p-4 shadow-2xl backdrop-blur-xl transition-all">
+    <div className="absolute top-4 right-4 z-20 w-80 sm:w-88 rounded-2xl border border-[#e7e5e0] bg-white/95 p-4 shadow-[0_1px_2px_rgba(0,0,0,0.06)] backdrop-blur-sm transition-all">
       {selectedCamera ? (
         /* Selected Camera HUD View */
         <div className="space-y-3.5">
@@ -58,12 +58,20 @@ export function CameraTelemetryHud({
           <div className="flex items-start justify-between">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-ping" />
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Telemetry Monitor
+                <span
+                  className={`flex h-2 w-2 rounded-full ${
+                    selectedCamera.state === "online"
+                      ? "bg-[#4f9d69]"
+                      : selectedCamera.state === "maintenance"
+                      ? "bg-[#c08a2d]"
+                      : "bg-[#c25450]"
+                  }`}
+                />
+                <h4 className="text-xs font-semibold text-[#6b675f]">
+                  Telemetry monitor
                 </h4>
               </div>
-              <h3 className="font-bold text-white text-sm sm:text-base leading-tight">
+              <h3 className="font-semibold text-[#1f1915] text-sm sm:text-base leading-tight">
                 {selectedCamera.name}
               </h3>
             </div>
@@ -75,26 +83,26 @@ export function CameraTelemetryHud({
                   ? "warning"
                   : "danger"
               }
-              className="uppercase tracking-wider text-[11px] font-bold"
+              className="capitalize text-[11px] font-semibold"
             >
               {selectedCamera.state}
             </Badge>
           </div>
 
           {/* UUID Copy Bar */}
-          <div className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900/60 px-2.5 py-1.5 text-xs text-slate-400">
-            <span className="font-mono text-[11px] text-slate-300 truncate max-w-[210px]">
+          <div className="flex items-center justify-between rounded-lg border border-[#e7e5e0] bg-[#f5f4ef] px-2.5 py-1.5 text-xs text-[#6b675f]">
+            <span className="font-mono text-[11px] text-[#1f1915] truncate max-w-[210px]">
               {selectedCamera.id}
             </span>
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 text-slate-400 hover:text-white"
+              className="h-6 w-6 text-[#6b675f] hover:text-[#1f1915]"
               onClick={() => handleCopyId(selectedCamera.id)}
               title="Copy UUID"
             >
               {copied ? (
-                <Check className="h-3.5 w-3.5 text-emerald-400" />
+                <Check className="h-3.5 w-3.5 text-[#4f9d69]" />
               ) : (
                 <Copy className="h-3.5 w-3.5" />
               )}
@@ -102,27 +110,27 @@ export function CameraTelemetryHud({
           </div>
 
           {/* Active Traffic Signal HUD */}
-          <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/80 p-3">
+          <div className="flex items-center justify-between rounded-xl border border-[#e7e5e0] bg-[#fdfbfa] p-3">
             <div className="space-y-0.5">
-              <span className="text-[10px] uppercase font-semibold text-slate-400">
-                Active Traffic Signal
+              <span className="text-[10px] font-semibold text-[#6b675f]">
+                Active traffic signal
               </span>
               <div className="flex items-center gap-2">
                 <span
-                  className={`text-sm font-bold uppercase tracking-wider ${
+                  className={`text-sm font-semibold capitalize ${
                     selectedCamera.current_light === "green"
-                      ? "text-emerald-400"
+                      ? "text-[#4f9d69]"
                       : selectedCamera.current_light === "amber"
-                      ? "text-amber-400"
+                      ? "text-[#c08a2d]"
                       : selectedCamera.current_light === "red"
-                      ? "text-rose-400"
-                      : "text-slate-400"
+                      ? "text-[#c25450]"
+                      : "text-[#6b675f]"
                   }`}
                 >
                   {selectedCamera.current_light || "Syncing"}
                 </span>
                 {selectedCamera.current_light_timestamp && (
-                  <span className="text-[10px] text-slate-500">
+                  <span className="text-[10px] text-[#8a857c]">
                     ({formatRelativeTime(selectedCamera.current_light_timestamp)})
                   </span>
                 )}
@@ -130,28 +138,28 @@ export function CameraTelemetryHud({
             </div>
 
             {/* 3-Lamp Illuminated Signal Head */}
-            <div className="flex items-center gap-1.5 rounded-lg border border-slate-800 bg-black/60 px-2.5 py-1.5">
+            <div className="flex items-center gap-1.5 rounded-lg border border-[#e7e5e0] bg-[#f5f4ef] px-2.5 py-1.5">
               <span
                 className={`h-3 w-3 rounded-full transition-all ${
                   selectedCamera.current_light === "red"
-                    ? "bg-rose-500 shadow-md shadow-rose-500 scale-110"
-                    : "bg-rose-950/60 opacity-30"
+                    ? "bg-[#d1584f] scale-110"
+                    : "bg-[#d1584f]/20"
                 }`}
                 title="Red Light"
               />
               <span
                 className={`h-3 w-3 rounded-full transition-all ${
                   selectedCamera.current_light === "amber"
-                    ? "bg-amber-400 shadow-md shadow-amber-400 scale-110"
-                    : "bg-amber-950/60 opacity-30"
+                    ? "bg-[#d99a2b] scale-110"
+                    : "bg-[#d99a2b]/20"
                 }`}
                 title="Amber Light"
               />
               <span
                 className={`h-3 w-3 rounded-full transition-all ${
                   selectedCamera.current_light === "green"
-                    ? "bg-emerald-400 shadow-md shadow-emerald-400 scale-110"
-                    : "bg-emerald-950/60 opacity-30"
+                    ? "bg-[#4f9d69] scale-110"
+                    : "bg-[#4f9d69]/20"
                 }`}
                 title="Green Light"
               />
@@ -160,55 +168,55 @@ export function CameraTelemetryHud({
 
           {/* Heartbeat Status Cards */}
           <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="rounded-lg border border-slate-800/80 bg-slate-900/40 p-2.5">
-              <div className="flex items-center gap-1.5 text-slate-400 mb-1">
-                <Activity className="h-3.5 w-3.5 text-blue-400" />
+            <div className="rounded-lg border border-[#e7e5e0] bg-[#fdfbfa] p-2.5">
+              <div className="flex items-center gap-1.5 text-[#6b675f] mb-1">
+                <Activity className="h-3.5 w-3.5 text-[#20808d]" />
                 <span className="text-[11px]">Heartbeat</span>
               </div>
-              <p className="font-semibold text-slate-200">
+              <p className="font-semibold text-[#1f1915]">
                 {formatRelativeTime(selectedCamera.last_heartbeat)}
               </p>
             </div>
-            <div className="rounded-lg border border-slate-800/80 bg-slate-900/40 p-2.5">
-              <div className="flex items-center gap-1.5 text-slate-400 mb-1">
-                <Clock className="h-3.5 w-3.5 text-cyan-400" />
-                <span className="text-[11px]">Last Event</span>
+            <div className="rounded-lg border border-[#e7e5e0] bg-[#fdfbfa] p-2.5">
+              <div className="flex items-center gap-1.5 text-[#6b675f] mb-1">
+                <Clock className="h-3.5 w-3.5 text-[#20808d]" />
+                <span className="text-[11px]">Last event</span>
               </div>
-              <p className="font-semibold text-slate-200">
+              <p className="font-semibold text-[#1f1915]">
                 {formatRelativeTime(selectedCamera.last_event_timestamp)}
               </p>
             </div>
           </div>
 
           {/* Hardware Telemetry Specs */}
-          <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-900/60 p-3">
+          <div className="space-y-2 rounded-xl border border-[#e7e5e0] bg-[#fdfbfa] p-3">
             {/* Battery */}
             <div>
               <div className="flex items-center justify-between text-xs mb-1">
-                <span className="flex items-center gap-1.5 text-slate-400">
+                <span className="flex items-center gap-1.5 text-[#6b675f]">
                   {selectedCamera.battery_level !== null &&
                   selectedCamera.battery_level > 20 ? (
-                    <Battery className="h-3.5 w-3.5 text-emerald-400" />
+                    <Battery className="h-3.5 w-3.5 text-[#4f9d69]" />
                   ) : (
-                    <BatteryWarning className="h-3.5 w-3.5 text-rose-400" />
+                    <BatteryWarning className="h-3.5 w-3.5 text-[#c25450]" />
                   )}
-                  Battery Level
+                  Battery level
                 </span>
-                <span className="font-mono font-semibold text-slate-200">
+                <span className="font-mono font-semibold text-[#1f1915]">
                   {selectedCamera.battery_level !== null &&
                   selectedCamera.battery_level !== undefined
                     ? `${selectedCamera.battery_level.toFixed(1)}%`
                     : "N/A"}
                 </span>
               </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#e7e5e0]">
                 <div
                   className={`h-full transition-all ${
                     (selectedCamera.battery_level ?? 0) > 50
-                      ? "bg-emerald-500"
+                      ? "bg-[#4f9d69]"
                       : (selectedCamera.battery_level ?? 0) > 20
-                      ? "bg-amber-500"
-                      : "bg-rose-500"
+                      ? "bg-[#c08a2d]"
+                      : "bg-[#c25450]"
                   }`}
                   style={{
                     width: `${Math.min(
@@ -221,20 +229,20 @@ export function CameraTelemetryHud({
             </div>
 
             {/* Wifi & Firmware */}
-            <div className="flex items-center justify-between pt-1 border-t border-slate-800/60 text-xs">
-              <div className="flex items-center gap-1.5 text-slate-400">
-                <Wifi className="h-3.5 w-3.5 text-blue-400" />
-                <span>Wi-Fi Signal</span>
+            <div className="flex items-center justify-between pt-1 border-t border-[#e7e5e0] text-xs">
+              <div className="flex items-center gap-1.5 text-[#6b675f]">
+                <Wifi className="h-3.5 w-3.5 text-[#20808d]" />
+                <span>Wi-Fi signal</span>
               </div>
-              <div className="flex items-center gap-1.5 font-mono text-slate-200">
+              <div className="flex items-center gap-1.5 font-mono text-[#1f1915]">
                 <div className="flex items-end gap-0.5 h-3">
                   {[1, 2, 3, 4].map((bar) => (
                     <div
                       key={bar}
                       className={`w-1 rounded-xs ${
                         bar <= getWifiBars(selectedCamera.wifi_signal)
-                          ? "bg-blue-400"
-                          : "bg-slate-700"
+                          ? "bg-[#20808d]"
+                          : "bg-[#e7e5e0]"
                       }`}
                       style={{ height: `${bar * 25}%` }}
                     />
@@ -250,23 +258,23 @@ export function CameraTelemetryHud({
             </div>
 
             {/* Firmware */}
-            <div className="flex items-center justify-between pt-1 border-t border-slate-800/60 text-xs">
-              <div className="flex items-center gap-1.5 text-slate-400">
-                <Cpu className="h-3.5 w-3.5 text-indigo-400" />
+            <div className="flex items-center justify-between pt-1 border-t border-[#e7e5e0] text-xs">
+              <div className="flex items-center gap-1.5 text-[#6b675f]">
+                <Cpu className="h-3.5 w-3.5 text-[#20808d]" />
                 <span>Firmware</span>
               </div>
-              <span className="font-mono text-slate-300">
+              <span className="font-mono text-[#1f1915]">
                 {selectedCamera.firmware_version || "v1.0.0"}
               </span>
             </div>
 
             {/* Location */}
-            <div className="flex items-center justify-between pt-1 border-t border-slate-800/60 text-xs">
-              <div className="flex items-center gap-1.5 text-slate-400">
-                <Compass className="h-3.5 w-3.5 text-amber-400" />
+            <div className="flex items-center justify-between pt-1 border-t border-[#e7e5e0] text-xs">
+              <div className="flex items-center gap-1.5 text-[#6b675f]">
+                <Compass className="h-3.5 w-3.5 text-[#20808d]" />
                 <span>Coordinates</span>
               </div>
-              <span className="font-mono text-[11px] text-slate-300">
+              <span className="font-mono text-[11px] text-[#1f1915]">
                 {Array.isArray(selectedCamera.location)
                   ? `${selectedCamera.location[0].toFixed(3)}, ${selectedCamera.location[1].toFixed(3)}`
                   : "GPS Syncing"}
@@ -279,8 +287,8 @@ export function CameraTelemetryHud({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Layers className="h-4 w-4 text-blue-400" />
-              <h4 className="font-semibold text-white text-sm">
+              <Layers className="h-4 w-4 text-[#20808d]" />
+              <h4 className="font-semibold text-[#1f1915] text-sm">
                 Traffic Fleet Overview
               </h4>
             </div>
@@ -295,34 +303,34 @@ export function CameraTelemetryHud({
             )}
           </div>
 
-          <p className="text-xs text-slate-400 leading-relaxed">
+          <p className="text-xs text-[#6b675f] leading-relaxed">
             Select any camera marker on the map or from the left sidebar to
             inspect real-time heartbeat telemetry, Wi-Fi RSSI diagnostics, and
             event records.
           </p>
 
           <div className="grid grid-cols-3 gap-2 text-center text-xs">
-            <div className="rounded-lg border border-slate-800/80 bg-slate-900/60 p-2">
-              <div className="text-lg font-bold text-emerald-400">
+            <div className="rounded-lg border border-[#e7e5e0] bg-[#fdfbfa] p-2">
+              <div className="text-lg font-bold text-[#4f9d69]">
                 {onlineCount}
               </div>
-              <div className="text-[10px] uppercase font-semibold text-slate-400">
+              <div className="text-[10px] font-semibold text-[#6b675f]">
                 Online
               </div>
             </div>
-            <div className="rounded-lg border border-slate-800/80 bg-slate-900/60 p-2">
-              <div className="text-lg font-bold text-amber-400">
+            <div className="rounded-lg border border-[#e7e5e0] bg-[#fdfbfa] p-2">
+              <div className="text-lg font-bold text-[#c08a2d]">
                 {maintenanceCount}
               </div>
-              <div className="text-[10px] uppercase font-semibold text-slate-400">
+              <div className="text-[10px] font-semibold text-[#6b675f]">
                 Service
               </div>
             </div>
-            <div className="rounded-lg border border-slate-800/80 bg-slate-900/60 p-2">
-              <div className="text-lg font-bold text-rose-400">
+            <div className="rounded-lg border border-[#e7e5e0] bg-[#fdfbfa] p-2">
+              <div className="text-lg font-bold text-[#c25450]">
                 {offlineCount}
               </div>
-              <div className="text-[10px] uppercase font-semibold text-slate-400">
+              <div className="text-[10px] font-semibold text-[#6b675f]">
                 Offline
               </div>
             </div>

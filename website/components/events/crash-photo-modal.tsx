@@ -77,24 +77,24 @@ export function CrashPhotoModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in-0 duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#1f1915]/50 p-4 backdrop-blur-sm animate-in fade-in-0 duration-200"
       onClick={onClose}
     >
       <div
-        className="relative flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-rose-500/30 bg-slate-950 shadow-2xl shadow-rose-950/40"
+        className="relative flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-[#e7e5e0] bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/80 px-5 py-3">
+        <div className="flex items-center justify-between border-b border-[#e7e5e0] bg-[#fdfbfa] px-5 py-3">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/20 text-rose-400">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#c25450]/10 text-[#c25450] border border-[#c25450]/30">
               <AlertTriangle className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-white">
+              <h3 className="text-sm font-semibold text-[#1f1915]">
                 Incident Photo Snapshot
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-[#6b675f]">
                 {cameraName} • Captured at {formatDateTime(timestamp)}
               </p>
             </div>
@@ -103,25 +103,25 @@ export function CrashPhotoModal({
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="h-8 w-8 text-slate-400 hover:text-white"
+            className="h-8 w-8 text-[#6b675f] hover:text-[#1f1915]"
           >
             <X className="h-4 w-4" />
           </Button>
         </div>
 
         {/* Image Display Area */}
-        <div className="relative flex min-h-[340px] max-h-[65vh] items-center justify-center bg-slate-900/40 p-6 overflow-hidden">
+        <div className="relative flex min-h-[340px] max-h-[65vh] items-center justify-center bg-[#f5f4ef] p-6 overflow-hidden">
           {isLoading ? (
-            <div className="flex flex-col items-center gap-2 text-sm text-slate-400">
-              <Loader2 className="h-8 w-8 animate-spin text-rose-500" />
+            <div className="flex flex-col items-center gap-2 text-sm text-[#6b675f]">
+              <Loader2 className="h-8 w-8 animate-spin text-[#20808d]" />
               <span>Fetching photo bytes from API...</span>
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center text-center p-6 text-sm text-slate-400">
-              <AlertTriangle className="h-8 w-8 text-amber-500 mb-2" />
-              <p className="font-semibold text-slate-300">Photo Unavailable</p>
-              <p className="text-xs text-slate-500 mt-1">{error}</p>
-              <p className="text-[11px] font-mono text-slate-600 mt-2">
+            <div className="flex flex-col items-center text-center p-6 text-sm text-[#6b675f]">
+              <AlertTriangle className="h-8 w-8 text-[#c08a2d] mb-2" />
+              <p className="font-semibold text-[#1f1915]">Photo Unavailable</p>
+              <p className="text-xs text-[#8a857c] mt-1">{error}</p>
+              <p className="text-[11px] font-mono text-[#8a857c] mt-2">
                 URL: {rawPhotoUrl}
               </p>
             </div>
@@ -129,8 +129,8 @@ export function CrashPhotoModal({
             <div className="flex flex-col items-center gap-3">
               {isSmallSeedImage ? (
                 /* Scaled preview card for demo seed images */
-                <div className="flex flex-col items-center rounded-xl border border-slate-800 bg-slate-900/90 p-6 text-center shadow-lg">
-                  <div className="flex h-24 w-24 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/80 p-2 shadow-inner">
+                <div className="flex flex-col items-center rounded-xl border border-[#e7e5e0] bg-white p-6 text-center shadow-sm">
+                  <div className="flex h-24 w-24 items-center justify-center rounded-lg border border-[#e7e5e0] bg-[#f5f4ef] p-2 shadow-inner">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={blobUrl}
@@ -139,11 +139,11 @@ export function CrashPhotoModal({
                       style={{ imageRendering: "pixelated" }}
                     />
                   </div>
-                  <div className="mt-3 flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
+                  <div className="mt-3 flex items-center gap-1.5 text-xs text-[#4f9d69] font-medium">
                     <CheckCircle2 className="h-3.5 w-3.5" />
                     <span>Raw Photo Loaded from API</span>
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
+                  <p className="text-[11px] text-[#6b675f] mt-0.5">
                     Payload: {fileSize} bytes (Standard demo frame snapshot)
                   </p>
                 </div>
@@ -153,7 +153,7 @@ export function CrashPhotoModal({
                 <img
                   src={blobUrl}
                   alt="Crash incident capture"
-                  className="max-h-[58vh] w-auto max-w-full rounded-lg object-contain shadow-md"
+                  className="max-h-[58vh] w-auto max-w-full rounded-lg object-contain shadow-sm"
                 />
               )}
             </div>
@@ -161,13 +161,13 @@ export function CrashPhotoModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-slate-800 bg-slate-900/60 px-5 py-3 text-xs text-slate-400">
+        <div className="flex items-center justify-between border-t border-[#e7e5e0] bg-[#fdfbfa] px-5 py-3 text-xs text-[#6b675f]">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[11px] text-slate-500 truncate max-w-[240px]">
+            <span className="font-mono text-[11px] text-[#8a857c] truncate max-w-[240px]">
               UUID: {photoId}
             </span>
             {fileSize !== null && (
-              <span className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] text-slate-400">
+              <span className="rounded bg-[#f5f4ef] px-1.5 py-0.5 font-mono text-[10px] text-[#6b675f]">
                 {fileSize < 1024
                   ? `${fileSize} B`
                   : `${(fileSize / 1024).toFixed(1)} KB`}
@@ -179,7 +179,7 @@ export function CrashPhotoModal({
               href={rawPhotoUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 transition-colors hover:bg-slate-700"
+              className="inline-flex items-center gap-1.5 rounded-md border border-[#e7e5e0] bg-[#f5f4ef] px-3 py-1.5 text-xs text-[#1f1915] transition-colors hover:bg-[#ebe9e2]"
             >
               <ExternalLink className="h-3.5 w-3.5" />
               Open Original
@@ -188,7 +188,7 @@ export function CrashPhotoModal({
               <a
                 href={blobUrl}
                 download={`crash-${photoId}.png`}
-                className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-xs text-white transition-colors hover:bg-blue-500"
+                className="inline-flex items-center gap-1.5 rounded-md bg-[#20808d] px-3 py-1.5 text-xs text-white transition-colors hover:bg-[#016a71]"
               >
                 <Download className="h-3.5 w-3.5" />
                 Download

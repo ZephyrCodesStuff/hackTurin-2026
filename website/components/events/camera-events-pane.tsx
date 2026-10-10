@@ -63,24 +63,24 @@ export function CameraEventsPane({
   return (
     <>
       <div
-        className={`absolute bottom-0 left-[20%] right-0 z-30 transition-all duration-300 ease-in-out border-t border-slate-800 bg-slate-950/95 shadow-2xl backdrop-blur-xl ${
+        className={`absolute bottom-0 left-[20%] right-0 z-30 transition-all duration-300 ease-in-out border-t border-[#e7e5e0] bg-[#faf9f5] shadow-[0_-1px_3px_rgba(0,0,0,0.06)] ${
           isMinimized ? "h-14" : "h-72 md:h-80"
         } flex flex-col`}
       >
         {/* Pane Header */}
-        <div className="flex h-14 items-center justify-between border-b border-slate-800 px-5">
+        <div className="flex h-14 items-center justify-between border-b border-[#e7e5e0] px-5">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-white text-sm sm:text-base">
+              <span className="font-semibold text-[#1f1915] text-sm sm:text-base">
                 {camera.name}
               </span>
-              <span className="font-mono text-xs text-slate-400">
+              <span className="font-mono text-xs text-[#8a857c]">
                 ({camera.id.slice(0, 8)})
               </span>
             </div>
-            <div className="hidden items-center gap-2 text-xs text-slate-400 sm:flex">
+            <div className="hidden items-center gap-2 text-xs text-[#6b675f] sm:flex">
               <span>•</span>
-              <span className="font-mono text-[11px] text-slate-400">
+              <span className="font-mono text-[11px] text-[#8a857c]">
                 {latLonString}
               </span>
             </div>
@@ -92,7 +92,7 @@ export function CameraEventsPane({
                   ? "warning"
                   : "danger"
               }
-              className="uppercase tracking-wider text-[10px]"
+              className="capitalize text-[10px]"
             >
               {camera.state}
             </Badge>
@@ -106,10 +106,10 @@ export function CameraEventsPane({
               onClick={onRefresh}
               disabled={isLoading}
               title="Refresh events"
-              className="h-8 px-2 text-slate-400 hover:text-white"
+              className="h-8 px-2 text-[#6b675f] hover:text-[#1f1915]"
             >
               <RefreshCw
-                className={`h-3.5 w-3.5 ${isLoading ? "animate-spin text-blue-400" : ""}`}
+                className={`h-3.5 w-3.5 ${isLoading ? "animate-spin text-[#20808d]" : ""}`}
               />
               <span className="ml-1.5 hidden text-xs sm:inline">Refresh</span>
             </Button>
@@ -118,7 +118,7 @@ export function CameraEventsPane({
               size="icon"
               onClick={() => setIsMinimized(!isMinimized)}
               title={isMinimized ? "Expand pane" : "Minimize pane"}
-              className="h-8 w-8 text-slate-400 hover:text-white"
+              className="h-8 w-8 text-[#6b675f] hover:text-[#1f1915]"
             >
               {isMinimized ? (
                 <ChevronUp className="h-4 w-4" />
@@ -131,7 +131,7 @@ export function CameraEventsPane({
               size="icon"
               onClick={onClose}
               title="Close pane"
-              className="h-8 w-8 text-slate-400 hover:text-rose-400"
+              className="h-8 w-8 text-[#6b675f] hover:text-[#c25450]"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -142,13 +142,13 @@ export function CameraEventsPane({
         {!isMinimized && (
           <div className="flex flex-1 flex-col overflow-hidden">
             {/* Filter Tabs */}
-            <div className="flex items-center gap-1 border-b border-slate-800/80 bg-slate-900/60 px-5 py-1.5 text-xs">
+            <div className="flex items-center gap-1 border-b border-[#e7e5e0] bg-[#f5f4ef] px-5 py-1.5 text-xs">
               <button
                 onClick={() => setFilter("all")}
                 className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
                   filter === "all"
-                    ? "bg-slate-800 text-blue-400 shadow-sm"
-                    : "text-slate-400 hover:text-slate-200"
+                    ? "bg-[#20808d]/10 text-[#20808d]"
+                    : "text-[#6b675f] hover:text-[#1f1915]"
                 }`}
               >
                 All Events ({events.length})
@@ -157,44 +157,44 @@ export function CameraEventsPane({
                 onClick={() => setFilter("crash")}
                 className={`flex items-center gap-1 rounded-md px-2.5 py-1 font-medium transition-colors ${
                   filter === "crash"
-                    ? "bg-rose-950/60 text-rose-300 border border-rose-800/40"
-                    : "text-slate-400 hover:text-slate-200"
+                    ? "bg-[#c25450]/10 text-[#a8423e] border border-[#c25450]/30"
+                    : "text-[#6b675f] hover:text-[#1f1915]"
                 }`}
               >
-                <AlertTriangle className="h-3 w-3 text-rose-400" />
+                <AlertTriangle className="h-3 w-3 text-[#c25450]" />
                 Crashes ({crashesCount})
               </button>
               <button
                 onClick={() => setFilter("light_change")}
                 className={`flex items-center gap-1 rounded-md px-2.5 py-1 font-medium transition-colors ${
                   filter === "light_change"
-                    ? "bg-amber-950/60 text-amber-300 border border-amber-800/40"
-                    : "text-slate-400 hover:text-slate-200"
+                    ? "bg-[#c08a2d]/10 text-[#9a6e22] border border-[#c08a2d]/30"
+                    : "text-[#6b675f] hover:text-[#1f1915]"
                 }`}
               >
-                <Activity className="h-3 w-3 text-amber-400" />
+                <Activity className="h-3 w-3 text-[#c08a2d]" />
                 Signal Changes ({lightCount})
               </button>
               <button
                 onClick={() => setFilter("illegal_crossing")}
                 className={`flex items-center gap-1 rounded-md px-2.5 py-1 font-medium transition-colors ${
                   filter === "illegal_crossing"
-                    ? "bg-purple-950/60 text-purple-300 border border-purple-800/40"
-                    : "text-slate-400 hover:text-slate-200"
+                    ? "bg-[#8c6ba8]/10 text-[#6f5090] border border-[#8c6ba8]/30"
+                    : "text-[#6b675f] hover:text-[#1f1915]"
                 }`}
               >
-                <Footprints className="h-3 w-3 text-purple-400" />
+                <Footprints className="h-3 w-3 text-[#8c6ba8]" />
                 Crossings ({crossingCount})
               </button>
               <button
                 onClick={() => setFilter("object_detected")}
                 className={`flex items-center gap-1 rounded-md px-2.5 py-1 font-medium transition-colors ${
                   filter === "object_detected"
-                    ? "bg-blue-950/60 text-blue-300 border border-blue-800/40"
-                    : "text-slate-400 hover:text-slate-200"
+                    ? "bg-[#20808d]/10 text-[#20808d] border border-[#20808d]/30"
+                    : "text-[#6b675f] hover:text-[#1f1915]"
                 }`}
               >
-                <Radio className="h-3 w-3 text-blue-400" />
+                <Radio className="h-3 w-3 text-[#20808d]" />
                 Detections ({objectsCount})
               </button>
             </div>
@@ -202,14 +202,14 @@ export function CameraEventsPane({
             {/* Events List */}
             <div className="flex-1 overflow-y-auto p-4">
               {isLoading ? (
-                <div className="flex h-36 items-center justify-center text-sm text-slate-400">
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin text-blue-500" />
+                <div className="flex h-36 items-center justify-center text-sm text-[#6b675f]">
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin text-[#20808d]" />
                   Loading camera events...
                 </div>
               ) : filteredEvents.length === 0 ? (
-                <div className="flex h-36 flex-col items-center justify-center text-center text-sm text-slate-400">
-                  <p className="font-medium text-slate-300">No events captured</p>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                <div className="flex h-36 flex-col items-center justify-center text-center text-sm text-[#6b675f]">
+                  <p className="font-medium text-[#1f1915]">No events captured</p>
+                  <p className="text-xs text-[#8a857c] mt-0.5">
                     No matching events recorded for this camera yet.
                   </p>
                 </div>
@@ -218,12 +218,12 @@ export function CameraEventsPane({
                   {filteredEvents.map((evt) => (
                     <div
                       key={`${evt.type}-${evt.id}`}
-                      className="group flex items-center justify-between rounded-lg border border-slate-800/80 bg-slate-900/50 p-2.5 transition-all hover:border-slate-700 hover:bg-slate-900"
+                      className="group flex items-center justify-between rounded-lg border border-[#e7e5e0] bg-[#fdfbfa] p-2.5 transition-all hover:border-[#d6d3cc] hover:bg-[#f5f4ef]"
                     >
                       {/* Left: Event Type & Badge */}
                       <div className="flex items-center gap-3">
                         {evt.type === "crash" && (
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[#c25450]/10 text-[#c25450] border border-[#c25450]/30">
                             <AlertTriangle className="h-4 w-4" />
                           </div>
                         )}
@@ -231,29 +231,29 @@ export function CameraEventsPane({
                           <div
                             className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border ${
                               evt.color === "red"
-                                ? "bg-rose-500/20 text-rose-400 border-rose-500/40"
+                                ? "bg-[#c25450]/10 text-[#c25450] border-[#c25450]/30"
                                 : evt.color === "amber"
-                                ? "bg-amber-500/20 text-amber-400 border-amber-500/40"
-                                : "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
+                                ? "bg-[#c08a2d]/10 text-[#c08a2d] border-[#c08a2d]/30"
+                                : "bg-[#4f9d69]/10 text-[#4f9d69] border-[#4f9d69]/30"
                             }`}
                           >
                             <Circle className="h-4 w-4 fill-current" />
                           </div>
                         )}
                         {evt.type === "illegal_crossing" && (
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-purple-500/15 text-purple-400 border border-purple-500/30">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[#8c6ba8]/10 text-[#8c6ba8] border border-[#8c6ba8]/30">
                             <Footprints className="h-4 w-4" />
                           </div>
                         )}
                         {evt.type === "object_detected" && (
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[#20808d]/10 text-[#20808d] border border-[#20808d]/30">
                             <Radio className="h-4 w-4" />
                           </div>
                         )}
 
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold uppercase tracking-wider text-slate-200">
+                            <span className="text-xs font-semibold capitalize text-[#1f1915]">
                               {evt.type.replace("_", " ")}
                             </span>
 
@@ -266,7 +266,7 @@ export function CameraEventsPane({
                                     ? "warning"
                                     : "danger"
                                 }
-                                className="text-[10px] uppercase font-bold"
+                                className="text-[10px] capitalize font-semibold"
                               >
                                 {evt.color}
                               </Badge>
@@ -275,7 +275,7 @@ export function CameraEventsPane({
                             {evt.type === "illegal_crossing" && (
                               <Badge
                                 variant="outline"
-                                className="text-[10px] capitalize border-purple-800 text-purple-300 bg-purple-950/40"
+                                className="text-[10px] capitalize border-[#8c6ba8]/30 text-[#6f5090] bg-[#8c6ba8]/10"
                               >
                                 {evt.entity_type}
                               </Badge>
@@ -284,7 +284,7 @@ export function CameraEventsPane({
                             {evt.type === "object_detected" && (
                               <Badge
                                 variant="outline"
-                                className="text-[10px] capitalize border-blue-800 text-blue-300 bg-blue-950/40"
+                                className="text-[10px] capitalize border-[#20808d]/30 text-[#20808d] bg-[#20808d]/10"
                               >
                                 {evt.entity_type}
                               </Badge>
@@ -293,17 +293,17 @@ export function CameraEventsPane({
                             {evt.type === "object_detected" &&
                               evt.velocity !== null &&
                               evt.velocity !== undefined && (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-mono text-cyan-400 bg-cyan-950/40 border border-cyan-800/40 px-1.5 py-0.5 rounded">
+                                <span className="inline-flex items-center gap-1 text-[11px] font-mono text-[#20808d] bg-[#20808d]/10 border border-[#20808d]/30 px-1.5 py-0.5 rounded">
                                   <Gauge className="h-3 w-3" />
                                   {evt.velocity.toFixed(1)} km/h
                                 </span>
                               )}
                           </div>
 
-                          <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+                          <div className="flex items-center gap-2 text-[11px] text-[#6b675f] mt-0.5">
                             <span>{formatDateTime(evt.timestamp)}</span>
                             <span>•</span>
-                            <span className="text-slate-500">
+                            <span className="text-[#8a857c]">
                               {formatRelativeTime(evt.timestamp)}
                             </span>
                           </div>
@@ -322,7 +322,7 @@ export function CameraEventsPane({
                                 timestamp: evt.timestamp,
                               })
                             }
-                            className="h-7 gap-1.5 text-xs bg-rose-600/90 hover:bg-rose-500"
+                            className="h-7 gap-1.5 text-xs"
                           >
                             <ImageIcon className="h-3.5 w-3.5" />
                             View Photo
