@@ -39,7 +39,6 @@ export default function CameraMap({
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
       maxZoom: 19,
-      className: "osm-dark-tiles",
     }).addTo(map);
 
     // Zoom control at bottom right
@@ -88,19 +87,19 @@ export default function CameraMap({
 
       const lightColor =
         currentLight === "green"
-          ? "#10b981"
+          ? "#4f9d69"
           : currentLight === "amber"
-          ? "#f59e0b"
+          ? "#d99a2b"
           : currentLight === "red"
-          ? "#ef4444"
+          ? "#d1584f"
           : camera.state === "online"
-          ? "#3b82f6"
+          ? "#20808d"
           : camera.state === "maintenance"
-          ? "#f59e0b"
-          : "#64748b";
+          ? "#d99a2b"
+          : "#8a857c";
 
       const pulseHtml = !isOffline
-        ? `<span class="pulse-ring" style="background-color: ${lightColor}40; width: 46px; height: 46px;"></span>`
+        ? `<span class="pulse-ring" style="background-color: ${lightColor}26; width: 46px; height: 46px;"></span>`
         : "";
 
       // Traffic Signal Icon with 3 mini lamps (Red, Yellow, Green)
@@ -119,9 +118,9 @@ export default function CameraMap({
               width: 36px;
               height: 36px;
               border-radius: 50%;
-              background: #090d16;
+              background: #ffffff;
               border: 2.5px solid ${lightColor};
-              box-shadow: 0 0 ${isSelected ? "18px" : "10px"} ${lightColor}bb;
+              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2)${isSelected ? ", 0 0 0 2px " + lightColor + "40" : ""};
               display: flex;
               align-items: center;
               justify-content: center;
@@ -135,22 +134,22 @@ export default function CameraMap({
                   width: 6px;
                   height: 6px;
                   border-radius: 50%;
-                  background: ${isRedActive ? "#ef4444" : "#ef444433"};
-                  box-shadow: ${isRedActive ? "0 0 6px #ef4444" : "none"};
+                  background: ${isRedActive ? "#d1584f" : "#d1584f33"};
+                  box-shadow: ${isRedActive ? "0 0 3px #d1584f99" : "none"};
                 "></span>
                 <span style="
                   width: 6px;
                   height: 6px;
                   border-radius: 50%;
-                  background: ${isAmberActive ? "#f59e0b" : "#f59e0b33"};
-                  box-shadow: ${isAmberActive ? "0 0 6px #f59e0b" : "none"};
+                  background: ${isAmberActive ? "#d99a2b" : "#d99a2b33"};
+                  box-shadow: ${isAmberActive ? "0 0 3px #d99a2b99" : "none"};
                 "></span>
                 <span style="
                   width: 6px;
                   height: 6px;
                   border-radius: 50%;
-                  background: ${isGreenActive ? "#10b981" : "#10b98133"};
-                  box-shadow: ${isGreenActive ? "0 0 6px #10b981" : "none"};
+                  background: ${isGreenActive ? "#4f9d69" : "#4f9d6933"};
+                  box-shadow: ${isGreenActive ? "0 0 3px #4f9d6999" : "none"};
                 "></span>
               </div>
             </div>
@@ -171,13 +170,13 @@ export default function CameraMap({
       // Tooltip hover with live traffic light color badge
       const lightLabel = currentLight ? currentLight.toUpperCase() : "SYNCING";
       marker.bindTooltip(
-        `<strong>${camera.name}</strong><br/>
+        `<strong style="color: #1f1915;">${camera.name}</strong><br/>
          <div style="display: flex; align-items: center; gap: 6px; margin-top: 3px;">
-           <span style="width: 8px; height: 8px; border-radius: 50%; background: ${lightColor}; box-shadow: 0 0 6px ${lightColor};"></span>
+           <span style="width: 8px; height: 8px; border-radius: 50%; background: ${lightColor};"></span>
            <span style="color: ${lightColor}; font-weight: 700; text-transform: uppercase; font-size: 11px;">
              ${lightLabel} SIGNAL
            </span>
-           <span style="color: #64748b; font-size: 10px;">• ${camera.state}</span>
+           <span style="color: #6b675f; font-size: 10px;">• ${camera.state}</span>
          </div>`,
         {
           direction: "top",
