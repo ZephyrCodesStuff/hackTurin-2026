@@ -135,17 +135,21 @@ export function CameraSidebar({
                   <div className="flex items-center gap-2 truncate">
                     <span
                       className={`h-2.5 w-2.5 rounded-full shrink-0 ${
-                        camera.current_light === "green"
+                        camera.state !== "online"
+                          ? "bg-[#b8b3aa] opacity-50"
+                          : camera.current_light === "green"
                           ? "bg-[#4f9d69]"
                           : camera.current_light === "amber"
                           ? "bg-[#c08a2d]"
                           : camera.current_light === "red"
                           ? "bg-[#c25450]"
-                          : camera.state === "online"
-                          ? "bg-[#20808d]"
-                          : "bg-[#b8b3aa]"
+                          : "bg-[#20808d]"
                       }`}
-                      title={camera.current_light ? `Traffic Light: ${camera.current_light}` : camera.state}
+                      title={
+                        camera.state === "online" && camera.current_light
+                          ? `Traffic Light: ${camera.current_light}`
+                          : camera.state
+                      }
                     />
                     <h4
                       className={`text-xs font-semibold truncate ${
@@ -193,7 +197,7 @@ export function CameraSidebar({
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    {camera.current_light && (
+                    {camera.state === "online" && camera.current_light && (
                       <span
                         className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-semibold capitalize ${
                           camera.current_light === "green"

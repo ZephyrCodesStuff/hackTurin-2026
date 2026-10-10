@@ -81,31 +81,29 @@ export default function CameraMap({
 
       const isSelected = selectedCameraId === camera.id;
 
-      // Color primarily driven by current traffic light state, fallback to operational state
+      // Traffic-light color only applies to operating (online) cameras.
+      // Maintenance/offline cameras render in a neutral tone at reduced opacity.
       const currentLight = camera.current_light;
-      const isOffline = camera.state === "offline";
+      const isOperating = camera.state === "online";
 
-      const lightColor =
-        currentLight === "green"
-          ? "#4f9d69"
-          : currentLight === "amber"
-          ? "#d99a2b"
-          : currentLight === "red"
-          ? "#d1584f"
-          : camera.state === "online"
-          ? "#20808d"
-          : camera.state === "maintenance"
-          ? "#d99a2b"
-          : "#8a857c";
+      const lightColor = !isOperating
+        ? "#8a857c"
+        : currentLight === "green"
+        ? "#4f9d69"
+        : currentLight === "amber"
+        ? "#d99a2b"
+        : currentLight === "red"
+        ? "#d1584f"
+        : "#20808d";
 
-      const pulseHtml = !isOffline
+      const pulseHtml = isOperating
         ? `<span class="pulse-ring" style="background-color: ${lightColor}26; width: 46px; height: 46px;"></span>`
         : "";
 
-      // Traffic Signal Icon with 3 mini lamps (Red, Yellow, Green)
-      const isRedActive = currentLight === "red";
-      const isAmberActive = currentLight === "amber";
-      const isGreenActive = currentLight === "green";
+      // 3-lamp signal widget only lights up for operating cameras.
+      const isRedActive = isOperating && currentLight === "red";
+      const isAmberActive = isOperating && currentLight === "amber";
+      const isGreenActive = isOperating && currentLight === "green";
 
       const customIcon = L.divIcon({
         className: "custom-camera-marker-div",
@@ -126,7 +124,7 @@ export default function CameraMap({
               justify-content: center;
               position: relative;
               z-index: 2;
-              opacity: ${isOffline ? "0.6" : "1"};
+              opacity: ${isOperating ? "1" : "0.55"};
             ">
               <!-- Mini 3-lamp traffic signal widget -->
               <div style="display: flex; flex-direction: column; align-items: center; gap: 2.5px;">
@@ -167,16 +165,18 @@ export default function CameraMap({
         });
       });
 
-      // Tooltip hover with live traffic light color badge
-      const lightLabel = currentLight ? currentLight.toUpperCase() : "SYNCING";
+      // Tooltip: operating cameras show their live signal; others show state only.
+      const tooltipLabel = isOperating
+        ? `${currentLight ? currentLight.toUpperCase() : "SYNCING"} SIGNAL`
+        : camera.state.toUpperCase();
       marker.bindTooltip(
         `<strong style="color: #1f1915;">${camera.name}</strong><br/>
          <div style="display: flex; align-items: center; gap: 6px; margin-top: 3px;">
-           <span style="width: 8px; height: 8px; border-radius: 50%; background: ${lightColor};"></span>
+           <span style="width: 8px; height: 8px; border-radius: 50%; background: ${lightColor};${isOperating ? "" : " opacity: 0.6;"}"></span>
            <span style="color: ${lightColor}; font-weight: 700; text-transform: uppercase; font-size: 11px;">
-             ${lightLabel} SIGNAL
+             ${tooltipLabel}
            </span>
-           <span style="color: #6b675f; font-size: 10px;">• ${camera.state}</span>
+           ${isOperating ? `<span style="color: #6b675f; font-size: 10px;">• ${camera.state}</span>` : ""}
          </div>`,
         {
           direction: "top",

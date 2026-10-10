@@ -1,0 +1,7 @@
+{
+  "task_id": "task-ui-redesign",
+  "task_description": "Visual/styling-only redesign of the Next.js 16 traffic-camera dashboard: move away from the dark slate surveillance admin look toward a calm, warm, LIGHT-MODE design borrowing the Perplexity + Claude (Anthropic) design language. Cream canvas, warm-neutral surfaces/borders, a single teal accent (#20808d), desaturated semantic/traffic colors, reduced visual noise (fewer borders, no neon glow, less backdrop-blur, sentence-case labels, sparing badges), a warm serif (Fraunces) for brand/title headings via next/font/google, and a light OSM map with retheemed markers/tooltips/popups. Preserve all functionality, props, state, polling, exports, and the single-screen no-scroll-body composition.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004"],
+  "blocked_reason": null
+}

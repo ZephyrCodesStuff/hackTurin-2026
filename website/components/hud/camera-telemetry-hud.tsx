@@ -11,7 +11,6 @@ import {
   Compass,
   Copy,
   Check,
-  Layers,
 } from "lucide-react";
 import { Camera } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
@@ -26,8 +25,6 @@ interface CameraTelemetryHudProps {
 
 export function CameraTelemetryHud({
   selectedCamera,
-  allCameras,
-  isMockData,
 }: CameraTelemetryHudProps) {
   const [copied, setCopied] = useState(false);
 
@@ -45,15 +42,13 @@ export function CameraTelemetryHud({
     return 1;
   };
 
-  const onlineCount = allCameras.filter((c) => c.state === "online").length;
-  const maintenanceCount = allCameras.filter((c) => c.state === "maintenance").length;
-  const offlineCount = allCameras.filter((c) => c.state === "offline").length;
+  // The HUD only appears when a camera is selected; there is no idle overview panel.
+  if (!selectedCamera) return null;
 
   return (
     <div className="absolute top-4 right-4 z-20 w-80 sm:w-88 rounded-2xl border border-[#e7e5e0] bg-white/95 p-4 shadow-[0_1px_2px_rgba(0,0,0,0.06)] backdrop-blur-sm transition-all">
-      {selectedCamera ? (
-        /* Selected Camera HUD View */
-        <div className="space-y-3.5">
+      {/* Selected Camera HUD View */}
+      <div className="space-y-3.5">
           {/* Header */}
           <div className="flex items-start justify-between">
             <div className="space-y-1">
@@ -281,62 +276,7 @@ export function CameraTelemetryHud({
               </span>
             </div>
           </div>
-        </div>
-      ) : (
-        /* Global Overview when no camera is actively selected */
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Layers className="h-4 w-4 text-[#20808d]" />
-              <h4 className="font-semibold text-[#1f1915] text-sm">
-                Traffic Fleet Overview
-              </h4>
-            </div>
-            {isMockData ? (
-              <Badge variant="warning" className="text-[10px]">
-                Mock Seed Data
-              </Badge>
-            ) : (
-              <Badge variant="success" className="text-[10px]">
-                API Connected
-              </Badge>
-            )}
-          </div>
-
-          <p className="text-xs text-[#6b675f] leading-relaxed">
-            Select any camera marker on the map or from the left sidebar to
-            inspect real-time heartbeat telemetry, Wi-Fi RSSI diagnostics, and
-            event records.
-          </p>
-
-          <div className="grid grid-cols-3 gap-2 text-center text-xs">
-            <div className="rounded-lg border border-[#e7e5e0] bg-[#fdfbfa] p-2">
-              <div className="text-lg font-bold text-[#4f9d69]">
-                {onlineCount}
-              </div>
-              <div className="text-[10px] font-semibold text-[#6b675f]">
-                Online
-              </div>
-            </div>
-            <div className="rounded-lg border border-[#e7e5e0] bg-[#fdfbfa] p-2">
-              <div className="text-lg font-bold text-[#c08a2d]">
-                {maintenanceCount}
-              </div>
-              <div className="text-[10px] font-semibold text-[#6b675f]">
-                Service
-              </div>
-            </div>
-            <div className="rounded-lg border border-[#e7e5e0] bg-[#fdfbfa] p-2">
-              <div className="text-lg font-bold text-[#c25450]">
-                {offlineCount}
-              </div>
-              <div className="text-[10px] font-semibold text-[#6b675f]">
-                Offline
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -63,7 +63,7 @@ export function CameraEventsPane({
   return (
     <>
       <div
-        className={`absolute bottom-0 left-[20%] right-0 z-30 transition-all duration-300 ease-in-out border-t border-[#e7e5e0] bg-[#faf9f5] shadow-[0_-1px_3px_rgba(0,0,0,0.06)] ${
+        className={`absolute bottom-0 left-0 right-0 z-30 transition-all duration-300 ease-in-out border-t border-[#e7e5e0] bg-[#faf9f5] shadow-[0_-1px_3px_rgba(0,0,0,0.06)] ${
           isMinimized ? "h-14" : "h-72 md:h-80"
         } flex flex-col`}
       >
