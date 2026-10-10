@@ -85,7 +85,7 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-950 font-sans text-slate-100 select-none">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#faf9f5] font-sans text-[#1f1915] select-none">
       {/* 1. Left Sidebar (18 - 20% max width) */}
       <CameraSidebar
         cameras={cameras}
@@ -97,7 +97,7 @@ export default function DashboardPage() {
       />
 
       {/* 2. Main Map Viewport (Takes up the entire rest of viewport) */}
-      <main className="relative flex-1 h-full w-full overflow-hidden bg-slate-900">
+      <main className="relative flex-1 h-full w-full overflow-hidden bg-stone-100">
         {/* OpenStreetMap Layer */}
         <MapWrapper
           cameras={cameras}

@@ -2,31 +2,55 @@
 @import "leaflet/dist/leaflet.css";
 
 :root {
-  --background: #090d16;
-  --foreground: #f3f4f6;
-  --card: #0f172a;
-  --card-foreground: #f8fafc;
-  --popover: #0f172a;
-  --popover-foreground: #f8fafc;
-  --primary: #3b82f6;
+  --background: #faf9f5;
+  --foreground: #1f1915;
+  --card: #ffffff;
+  --card-foreground: #1f1915;
+  --popover: #ffffff;
+  --popover-foreground: #1f1915;
+  --primary: #20808d;
   --primary-foreground: #ffffff;
-  --secondary: #1e293b;
-  --secondary-foreground: #f8fafc;
-  --muted: #1e293b;
-  --muted-foreground: #94a3b8;
-  --accent: #1e293b;
-  --accent-foreground: #f8fafc;
-  --destructive: #ef4444;
+  --secondary: #f5f4ef;
+  --secondary-foreground: #1f1915;
+  --muted: #f5f4ef;
+  --muted-foreground: #6b675f;
+  --accent: #f5f4ef;
+  --accent-foreground: #1f1915;
+  --destructive: #c25450;
   --destructive-foreground: #ffffff;
-  --border: #1e293b;
-  --input: #1e293b;
-  --ring: #3b82f6;
+  --border: #e7e5e0;
+  --input: #e7e5e0;
+  --ring: #20808d;
+}
+
+@theme {
+  --font-sans: var(--font-lexend-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-fraunces);
+
+  --color-canvas: #faf9f5;
+  --color-surface: #ffffff;
+  --color-surface-warm: #fdfbfa;
+  --color-surface-tint: #f5f4ef;
+  --color-border-warm: #e7e5e0;
+  --color-border-strong: #d6d3cc;
+  --color-charcoal: #1f1915;
+  --color-muted-foreground: #6b675f;
+  --color-faint: #8a857c;
+  --color-accent-teal: #20808d;
+  --color-accent-teal-deep: #016a71;
+  --color-status-green: #4f9d69;
+  --color-status-amber: #c08a2d;
+  --color-status-red: #c25450;
+  --color-signal-red: #d1584f;
+  --color-signal-amber: #d99a2b;
+  --color-signal-green: #4f9d69;
 }
 
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   overflow: hidden;
 }
 
@@ -109,10 +133,10 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.2);
+  background: rgba(31, 25, 21, 0.15);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.4);
+  background: rgba(31, 25, 21, 0.3);
 }

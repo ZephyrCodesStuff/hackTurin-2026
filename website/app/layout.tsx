@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Lexend, Geist_Mono } from "next/font/google";
+import { Lexend, Geist_Mono, Fraunces } from "next/font/google";
 import "./globals.css";
 
 const lexendSans = Lexend({
@@ -9,6 +9,11 @@ const lexendSans = Lexend({
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
   subsets: ["latin"],
 });
 
@@ -23,7 +28,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       suppressHydrationWarning
       suppressContentEditableWarning
-      className={`${lexendSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${lexendSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
