@@ -1,0 +1,25 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Retheme the four UI primitives (button, badge, card, input) to the light palette. These are consumed by every feature component, so they come after the token/font foundation (FEAT-001) and before the feature components (FEAT-003). cva variant names and component signatures/exports must not change — styling only.",
+  "status": "completed",
+  "steps": [
+    "components/ui/button.tsx: change the base `focus-visible:ring-blue-500` to a teal ring (#20808d). Retheme variants: default -> teal bg #20808d, white text, hover #016a71, active deeper; destructive -> muted red #c25450 bg; outline -> warm-neutral border (stone-200/#e7e5e0) + light surface + charcoal text, hover warm tint; secondary -> warm neutral surface (#f5f4ef) + charcoal; ghost -> transparent, muted charcoal text, hover warm tint; link -> teal text. Keep all variant and size keys and the shadow classes toned to soft (shadow-sm).",
+    "components/ui/badge.tsx: retheme the 7 variants, keeping all names. default -> teal bg #20808d + white; secondary -> warm-neutral surface + charcoal; destructive -> muted red; outline -> charcoal text + warm-neutral border; success -> muted green (#4f9d69) text on a light green tint with soft border; warning -> muted amber (#c08a2d, darken text enough for AA) on light amber tint; danger -> muted red (#c25450) on light red tint. Keep rounded-full pill shape for badges (badges may stay pill; it is other elements that should avoid pill-everything).",
+    "components/ui/card.tsx: change the Card base from `rounded-xl border border-slate-800 bg-slate-900/80 text-slate-100 shadow backdrop-blur-md` to a light surface (bg-white or #fdfbfa), border-stone-200 (#e7e5e0), charcoal text, soft `shadow-sm`, and REMOVE `backdrop-blur-md`. Retheme CardTitle `text-white` -> charcoal and CardDescription `text-slate-400` -> text-stone-500 (#6b675f).",
+    "components/ui/input.tsx: change from slate dark surface + blue ring to a light surface (white/#fdfbfa), border-stone-200, charcoal text, `placeholder:text-stone-400`, and teal `focus-visible:ring-[#20808d]`."
+  ],
+  "acceptance_criteria": [
+    "button.tsx default variant is teal, focus-visible ring is teal, and all variant/size keys are unchanged.",
+    "badge.tsx keeps all 7 variant names with light-palette, desaturated semantic colors.",
+    "card.tsx has a light surface, warm-neutral border, soft shadow, and no backdrop-blur; CardTitle/CardDescription use charcoal/muted text.",
+    "input.tsx uses a light surface, warm-neutral border, and teal focus ring.",
+    "No exports, variant names, or component signatures changed."
+  ],
+  "verification": [
+    "Run `bun run lint` from the website directory and confirm it exits 0.",
+    "Run `bun run build` from the website directory and confirm it completes without errors."
+  ],
+  "blocked_reason": null,
+  "findings": "Primitives rethemed to light palette with literal arbitrary hex classes (consistent with page.tsx approach). lint exit 0, build no errors. Exports, cva variant names, size keys, and signatures all unchanged.\n\nBUTTON (components/ui/button.tsx): base focus ring now focus-visible:ring-[#20808d]. Variants: default bg-[#20808d] text-white hover:bg-[#016a71] active:bg-[#015258]; destructive bg-[#c25450] hover:bg-[#b24743] active:bg-[#9e3e3a]; outline border-[#e7e5e0] bg-[#fdfbfa] text-[#1f1915] hover:bg-[#f5f4ef]; secondary bg-[#f5f4ef] text-[#1f1915] hover:bg-[#ebe9e2]; ghost text-[#6b675f] hover:bg-[#f5f4ef] hover:text-[#1f1915]; link text-[#20808d]. All shadows toned to shadow-sm.\n\nBADGE (components/ui/badge.tsx): 7 variant names kept, rounded-full retained. default bg-[#20808d] text-white; secondary bg-[#f5f4ef] text-[#1f1915]; destructive bg-[#c25450] text-white; outline text-[#1f1915] border-[#e7e5e0]; success border/bg-[#4f9d69]/30-10 text-[#3f7d54]; warning border/bg-[#c08a2d]/30-10 text-[#9a6e22]; danger border/bg-[#c25450]/30-10 text-[#a8423e]. Semantic badge TEXT colors were darkened from the base muted palette hexes (status-green #4f9d69->#3f7d54, status-amber #c08a2d->#9a6e22, status-red #c25450->#a8423e) so text reads AA on the light 10%-tint fills; the 10% tint fill + 30% border still use the base muted hex. Note: focus ring uses ring-ring (CSS var --ring = #20808d from FEAT-001).\n\nCARD (components/ui/card.tsx): base now rounded-xl border-[#e7e5e0] bg-[#fdfbfa] text-[#1f1915] shadow-sm, backdrop-blur-md REMOVED. CardTitle text-[#1f1915], CardDescription text-[#6b675f].\n\nINPUT (components/ui/input.tsx): border-[#e7e5e0] bg-[#fdfbfa] text-[#1f1915] placeholder:text-[#8a857c] (faint/stone-400 token) focus-visible:ring-[#20808d]. shadow-sm kept.\n\nFor FEAT-003 consumers: these primitives now assume a light surface. The default Button/Badge accent is teal #20808d; muted/secondary surfaces are #f5f4ef; borders are #e7e5e0. If a feature uses Badge success/warning/danger, text is the darkened AA hex noted above."
+}
