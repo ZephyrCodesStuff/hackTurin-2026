@@ -116,3 +116,4 @@ class ResolveCrashPayload(StrictBaseModel):
         description="List of integer enum IDs representing dispatched emergency units",
     )
     notes: Optional[str] = Field(None, description="Optional dispatch notes")
+    resolved_at: Optional[int] = Field(None, description="Optional custom resolved timestamp in epoch ms")

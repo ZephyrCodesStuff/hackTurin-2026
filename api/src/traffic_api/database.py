@@ -286,6 +286,23 @@ def insert_events(camera_id: str, events: list) -> dict[str, int]:
                 )
                 counts["objects_detected"] += 1
 
+        if events:
+            timestamps = [
+                getattr(e, "timestamp", None) or (e.get("timestamp") if isinstance(e, dict) else None)
+                for e in events
+            ]
+            valid_ts = [ts for ts in timestamps if isinstance(ts, (int, float))]
+            if valid_ts:
+                max_ts = int(max(valid_ts))
+                connection.execute(
+                    """
+                    UPDATE CAMERA
+                    SET last_event_timestamp = MAX(COALESCE(last_event_timestamp, 0), ?)
+                    WHERE id = ?
+                    """,
+                    (max_ts, camera_id),
+                )
+
     return counts
 
 
@@ -447,9 +464,10 @@ def resolve_crash(
     crash_identifier: str | int,
     dispatched_units: list[int],
     resolved_by: str | None = None,
+    resolved_at: int | None = None,
 ) -> dict | None:
     """Mark a crash event as resolved with dispatched emergency units (int enums)."""
-    now_ms = int(time.time() * 1000)
+    now_ms = resolved_at if resolved_at is not None else int(time.time() * 1000)
     units_json = json.dumps(dispatched_units)
 
     with get_connection() as connection:

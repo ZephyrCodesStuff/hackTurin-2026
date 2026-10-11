@@ -13,8 +13,10 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from traffic_api.user_db import get_user_by_id
 
-USER_JWT_SECRET = os.environ.get(
-    "USER_SESSION_SECRET", "traffic-panel-demo-secret-key-9281734"
+USER_JWT_SECRET = (
+    os.environ.get("USER_JWT_SECRET")
+    or os.environ.get("USER_SESSION_SECRET")
+    or "traffic-panel-demo-secret-key-9281734"
 )
 USER_JWT_ALGORITHM = "HS256"
 

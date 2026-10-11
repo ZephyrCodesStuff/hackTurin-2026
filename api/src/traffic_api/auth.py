@@ -11,7 +11,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 CAMERA_JWT_ALGORITHM = "HS256"
 CAMERA_JWT_ISSUER = "traffic-camera-api"
-DEFAULT_CAMERA_SECRET = "traffic-camera-demo-secret-key-8371946"
+DEFAULT_CAMERA_SECRET = "secret"
 
 security = HTTPBearer(auto_error=False)
 

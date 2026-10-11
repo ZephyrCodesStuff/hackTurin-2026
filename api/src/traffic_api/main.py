@@ -335,6 +335,7 @@ async def resolve_crash_endpoint(
         crash_identifier=crash_id,
         dispatched_units=body.dispatched_units,
         resolved_by=resolved_by,
+        resolved_at=body.resolved_at,
     )
     if not result:
         raise HTTPException(status_code=404, detail="Crash event not found")
