@@ -9,7 +9,6 @@ import {
   ChevronRight,
   Radio,
   LogOut,
-  User,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/login-gate";
 import { Camera, CameraState } from "@/lib/types";

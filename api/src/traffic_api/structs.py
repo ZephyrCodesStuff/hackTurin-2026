@@ -1,6 +1,4 @@
-from __future__ import annotations
-
-from enum import Enum
+from enum import Enum, IntEnum
 import time
 from typing import Annotated, List, Literal, Optional, Union
 from uuid import UUID
@@ -97,4 +95,24 @@ class CameraEditPayload(StrictBaseModel):
     location: Optional[Union[tuple[float, float], List[float], str]] = Field(
         None, description="Updated coordinates [latitude, longitude] or location string"
     )
+    latitude: Optional[float] = Field(None, ge=-90.0, le=90.0, description="Latitude coordinate (-90 to 90)")
+    longitude: Optional[float] = Field(None, ge=-180.0, le=180.0, description="Longitude coordinate (-180 to 180)")
     state: Optional[CameraState] = Field(None, description="Updated camera operational state")
+
+
+class EmergencyUnit(IntEnum):
+    POLIZIA_LOCALE = 1
+    EMERGENZA_SANITARIA = 2
+    VIGILI_DEL_FUOCO = 3
+    CARABINIERI = 4
+    POLIZIA_DI_STATO = 5
+    SOCCORSO_STRADALE = 6
+    PROTEZIONE_CIVILE = 7
+
+
+class ResolveCrashPayload(StrictBaseModel):
+    dispatched_units: List[int] = Field(
+        default_factory=list,
+        description="List of integer enum IDs representing dispatched emergency units",
+    )
+    notes: Optional[str] = Field(None, description="Optional dispatch notes")

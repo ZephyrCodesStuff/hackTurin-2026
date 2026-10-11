@@ -33,11 +33,13 @@ from traffic_api.database import (
     initialize_database,
     insert_events,
     reset_database,
+    resolve_crash,
     update_camera_details,
     update_camera_heartbeat,
     upsert_camera,
 )
-from traffic_api.structs import CameraEditPayload, CameraHeartbeatPayload, IngestPayload
+from traffic_api.structs import CameraEditPayload, CameraHeartbeatPayload, IngestPayload, ResolveCrashPayload
+from traffic_api.user_db import get_user_by_username, get_user_camera_ids
 
 logger = logging.getLogger("traffic_api")
 
@@ -208,13 +210,25 @@ async def edit_camera_endpoint(
     name = body.name if "name" in unset_fields else None
     state = body.state.value if "state" in unset_fields and body.state else None
 
-    update_location = "location" in unset_fields
+    update_location = (
+        "location" in unset_fields
+        or "latitude" in unset_fields
+        or "longitude" in unset_fields
+    )
     location_str = None
     lat = None
     lon = None
 
     if update_location:
-        if body.location is None:
+        if body.latitude is not None and body.longitude is not None:
+            lat = float(body.latitude)
+            lon = float(body.longitude)
+            location_str = f"({lat}, {lon})"
+        elif (
+            body.location is None
+            and "latitude" not in unset_fields
+            and "longitude" not in unset_fields
+        ):
             location_str = "Unknown"
             lat = None
             lon = None
@@ -231,6 +245,10 @@ async def edit_camera_endpoint(
             else:
                 lat = None
                 lon = None
+        elif body.latitude is not None or body.longitude is not None:
+            lat = float(body.latitude) if body.latitude is not None else existing.get("latitude")
+            lon = float(body.longitude) if body.longitude is not None else existing.get("longitude")
+            location_str = f"({lat}, {lon})" if lat is not None and lon is not None else existing.get("location")
         else:
             raise HTTPException(
                 status_code=422,
@@ -305,6 +323,35 @@ async def list_camera_events(
     }
 
 
+@app.post("/crashes/{crash_id}/resolve")
+async def resolve_crash_endpoint(
+    crash_id: str,
+    body: ResolveCrashPayload,
+    user: Optional[dict] = Depends(get_current_user_optional),
+):
+    """Mark a crash event as resolved with dispatched emergency units."""
+    resolved_by = user["username"] if user else "operator"
+    result = resolve_crash(
+        crash_identifier=crash_id,
+        dispatched_units=body.dispatched_units,
+        resolved_by=resolved_by,
+    )
+    if not result:
+        raise HTTPException(status_code=404, detail="Crash event not found")
+
+    logger.info(
+        "Crash %s marked as resolved by %s with units %s",
+        crash_id,
+        resolved_by,
+        body.dispatched_units,
+    )
+    return {
+        "message": "Crash marked as resolved and units dispatched",
+        "crash": result,
+    }
+
+
+
 @app.post("/cameras/{camera_id}/heartbeat")
 async def camera_heartbeat(
     camera_id: UUID,
@@ -317,6 +364,12 @@ async def camera_heartbeat(
     use PATCH /cameras/{camera_id}/edit instead.
     """
     camera_id_str = str(camera_id)
+    existing_camera = get_camera_by_id(camera_id_str)
+    if existing_camera and existing_camera.get("state") == "offline":
+        raise HTTPException(
+            status_code=409,
+            detail="Camera is offline (taken down). Heartbeats are rejected.",
+        )
 
     updated_camera = update_camera_heartbeat(
         camera_id=camera_id_str,

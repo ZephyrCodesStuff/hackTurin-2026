@@ -2,8 +2,10 @@ from __future__ import annotations
 
 """SQLite setup and connection helpers for the API."""
 
-import sqlite3
+import json
 from pathlib import Path
+import sqlite3
+import time
 
 # database.py lives at src/traffic_api/, so the project root is two levels up.
 PROJECT_DIR = Path(__file__).resolve().parents[2]
@@ -56,6 +58,19 @@ def _migrate_schema_columns(connection: sqlite3.Connection) -> None:
     }
     if "entity_type" not in object_cols:
         connection.execute("ALTER TABLE OBJECT_DETECTED ADD COLUMN entity_type TEXT NOT NULL DEFAULT 'car'")
+
+    crash_cols = {
+        row["name"] for row in connection.execute("PRAGMA table_info(CRASH)").fetchall()
+    }
+    new_crash_columns = [
+        ("resolved", "INTEGER NOT NULL DEFAULT 0"),
+        ("resolved_at", "INTEGER"),
+        ("resolved_by", "TEXT"),
+        ("dispatched_units", "TEXT"),
+    ]
+    for col_name, col_def in new_crash_columns:
+        if col_name not in crash_cols:
+            connection.execute(f"ALTER TABLE CRASH ADD COLUMN {col_name} {col_def}")
 
 
 def get_connection() -> sqlite3.Connection:
@@ -119,7 +134,7 @@ def upsert_camera(camera_id: str, name: str = "Unknown", location: str = "Unknow
         return cursor.rowcount > 0
 
 
-def update_camera_details(
+def update_camera_heartbeat(
     camera_id: str,
     last_heartbeat: int | None = None,
     last_event_timestamp: int | None = None,
@@ -144,7 +159,6 @@ def update_camera_details(
             """
             INSERT INTO CAMERA (
                 id, name, location, state,
-                id, name, location, state,
                 last_heartbeat, last_event_timestamp, battery_level,
                 firmware_version, wifi_signal
             )
@@ -168,6 +182,11 @@ def update_camera_details(
             ),
         )
     return get_camera_by_id(camera_id)  # type: ignore
+
+
+# Alias for backward compatibility
+update_camera_details = update_camera_heartbeat
+
 
 
 def edit_camera(
@@ -354,15 +373,29 @@ def get_camera_events(camera_id: str) -> list[dict]:
     with get_connection() as connection:
         # Crashes
         rows = connection.execute(
-            "SELECT id, photo_id, timestamp FROM CRASH WHERE CAMERA_id = ?",
+            """
+            SELECT id, photo_id, timestamp, resolved, resolved_at, resolved_by, dispatched_units
+            FROM CRASH
+            WHERE CAMERA_id = ?
+            """,
             (camera_id,),
         ).fetchall()
         for r in rows:
+            units = []
+            if r["dispatched_units"]:
+                try:
+                    units = json.loads(r["dispatched_units"])
+                except Exception:
+                    units = []
             events.append({
                 "type": "crash",
                 "id": r["id"],
                 "photo_id": r["photo_id"],
                 "timestamp": r["timestamp"],
+                "resolved": bool(r["resolved"]) if r["resolved"] is not None else False,
+                "resolved_at": r["resolved_at"],
+                "resolved_by": r["resolved_by"],
+                "dispatched_units": units,
             })
 
         # Light changes
@@ -408,3 +441,72 @@ def get_camera_events(camera_id: str) -> list[dict]:
     # Sort newest first
     events.sort(key=lambda e: e["timestamp"], reverse=True)
     return events
+
+
+def resolve_crash(
+    crash_identifier: str | int,
+    dispatched_units: list[int],
+    resolved_by: str | None = None,
+) -> dict | None:
+    """Mark a crash event as resolved with dispatched emergency units (int enums)."""
+    now_ms = int(time.time() * 1000)
+    units_json = json.dumps(dispatched_units)
+
+    with get_connection() as connection:
+        is_numeric = isinstance(crash_identifier, int) or (
+            isinstance(crash_identifier, str) and crash_identifier.isdigit()
+        )
+        if is_numeric:
+            connection.execute(
+                """
+                UPDATE CRASH
+                SET resolved = 1, resolved_at = ?, resolved_by = ?, dispatched_units = ?
+                WHERE id = ? OR photo_id = ?
+                """,
+                (now_ms, resolved_by, units_json, int(crash_identifier), str(crash_identifier)),
+            )
+        else:
+            connection.execute(
+                """
+                UPDATE CRASH
+                SET resolved = 1, resolved_at = ?, resolved_by = ?, dispatched_units = ?
+                WHERE photo_id = ?
+                """,
+                (now_ms, resolved_by, units_json, str(crash_identifier)),
+            )
+        connection.commit()
+
+        row = connection.execute(
+            """
+            SELECT id, photo_id, timestamp, CAMERA_id, resolved, resolved_at, resolved_by, dispatched_units
+            FROM CRASH
+            WHERE id = ? OR photo_id = ?
+            """,
+            (
+                int(crash_identifier) if is_numeric else -1,
+                str(crash_identifier),
+            ),
+        ).fetchone()
+
+        if not row:
+            return None
+
+        units = []
+        if row["dispatched_units"]:
+            try:
+                units = json.loads(row["dispatched_units"])
+            except Exception:
+                units = []
+
+        return {
+            "type": "crash",
+            "id": row["id"],
+            "photo_id": row["photo_id"],
+            "timestamp": row["timestamp"],
+            "camera_id": row["CAMERA_id"],
+            "resolved": bool(row["resolved"]),
+            "resolved_at": row["resolved_at"],
+            "resolved_by": row["resolved_by"],
+            "dispatched_units": units,
+        }
+

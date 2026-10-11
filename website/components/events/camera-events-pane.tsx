@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   X,
   AlertTriangle,
@@ -16,12 +16,21 @@ import {
   Pencil,
   BarChart3,
   ScrollText,
+  Siren,
+  CheckCircle2,
 } from "lucide-react";
-import { Camera, CameraEvent, CrashEvent } from "@/lib/types";
+import {
+  Camera,
+  CameraEvent,
+  CrashEvent,
+  EmergencyUnit,
+  EMERGENCY_UNIT_CONFIG,
+} from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatRelativeTime, formatDateTime } from "@/lib/utils";
 import { CrashPhotoModal } from "./crash-photo-modal";
+import { DispatchEmsDialog } from "./dispatch-ems-dialog";
 
 interface CameraEventsPaneProps {
   camera: Camera | null;
@@ -30,6 +39,7 @@ interface CameraEventsPaneProps {
   onClose: () => void;
   onRefresh: () => void;
   initialFilter?: EventFilter;
+  onEditCamera?: (camera: Camera) => void;
 }
 
 type EventFilter = "all" | "crash" | "light_change" | "illegal_crossing" | "object_detected";
@@ -41,7 +51,9 @@ export function CameraEventsPane({
   onClose,
   onRefresh,
   initialFilter = "all",
+  onEditCamera,
 }: CameraEventsPaneProps) {
+  const [viewMode, setViewMode] = useState<"logs" | "metrics">("logs");
   const [userSelectedFilter, setUserSelectedFilter] = useState<EventFilter | null>(null);
   const [prevInitialFilter, setPrevInitialFilter] = useState<EventFilter>(initialFilter);
   const [prevCameraId, setPrevCameraId] = useState<string | undefined>(camera?.id);
@@ -50,6 +62,9 @@ export function CameraEventsPane({
     setPrevInitialFilter(initialFilter);
     setPrevCameraId(camera?.id);
     setUserSelectedFilter(null);
+    if (initialFilter === "crash") {
+      setViewMode("logs");
+    }
   }
 
   const filter = userSelectedFilter ?? initialFilter;
@@ -60,6 +75,15 @@ export function CameraEventsPane({
     photoId: string;
     timestamp: number;
   } | null>(null);
+  const [dispatchingCrash, setDispatchingCrash] = useState<CrashEvent | null>(null);
+
+  // Stable "now" that advances every 30s so crash status badges transition
+  // from "In Progress" to "Resolved" without reading Date.now() during render.
+  const [now, setNow] = useState<number>(() => Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(interval);
+  }, []);
 
   if (!camera) return null;
 
@@ -399,122 +423,204 @@ export function CameraEventsPane({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {filteredEvents.map((evt) => (
-                    <div
-                      key={`${evt.type}-${evt.id}`}
-                      className="group flex items-center justify-between rounded-lg border border-[#e7e5e0] bg-[#fdfbfa] p-2.5 transition-all hover:border-[#d6d3cc] hover:bg-[#f5f4ef]"
-                    >
-                      {/* Left: Event Type & Badge */}
-                      <div className="flex items-center gap-3">
-                        {evt.type === "crash" && (
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[#c25450]/10 text-[#c25450] border border-[#c25450]/30">
-                            <AlertTriangle className="h-4 w-4" />
-                          </div>
-                        )}
-                        {evt.type === "light_change" && (
-                          <div
-                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border ${
-                              evt.color === "red"
-                                ? "bg-[#c25450]/10 text-[#c25450] border-[#c25450]/30"
-                                : evt.color === "amber"
-                                ? "bg-[#c08a2d]/10 text-[#c08a2d] border-[#c08a2d]/30"
-                                : "bg-[#4f9d69]/10 text-[#4f9d69] border-[#4f9d69]/30"
-                            }`}
-                          >
-                            <Circle className="h-4 w-4 fill-current" />
-                          </div>
-                        )}
-                        {evt.type === "illegal_crossing" && (
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[#8c6ba8]/10 text-[#8c6ba8] border border-[#8c6ba8]/30">
-                            <Footprints className="h-4 w-4" />
-                          </div>
-                        )}
-                        {evt.type === "object_detected" && (
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[#20808d]/10 text-[#20808d] border border-[#20808d]/30">
-                            <Radio className="h-4 w-4" />
-                          </div>
-                        )}
+                  {filteredEvents.map((evt) => {
+                    const crash = evt.type === "crash" ? (evt as CrashEvent) : null;
+                    const isResolved = Boolean(crash?.resolved);
+                    const resolutionAge = crash?.resolved_at ? now - crash.resolved_at : Infinity;
+                    const isInProgress = isResolved && resolutionAge < 15 * 60 * 1000;
+                    const isFinalResolved = isResolved && resolutionAge >= 15 * 60 * 1000;
 
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold capitalize text-[#1f1915]">
-                              {evt.type.replace("_", " ")}
-                            </span>
-
-                            {evt.type === "light_change" && (
-                              <Badge
-                                variant={
-                                  evt.color === "green"
-                                    ? "success"
-                                    : evt.color === "amber"
-                                    ? "warning"
-                                    : "danger"
-                                }
-                                className="text-[10px] capitalize font-semibold"
-                              >
-                                {evt.color}
-                              </Badge>
-                            )}
-
-                            {evt.type === "illegal_crossing" && (
-                              <Badge
-                                variant="outline"
-                                className="text-[10px] capitalize border-[#8c6ba8]/30 text-[#6f5090] bg-[#8c6ba8]/10"
-                              >
-                                {evt.entity_type}
-                              </Badge>
-                            )}
-
-                            {evt.type === "object_detected" && (
-                              <Badge
-                                variant="outline"
-                                className="text-[10px] capitalize border-[#20808d]/30 text-[#20808d] bg-[#20808d]/10"
-                              >
-                                {evt.entity_type}
-                              </Badge>
-                            )}
-
-                            {evt.type === "object_detected" &&
-                              evt.velocity !== null &&
-                              evt.velocity !== undefined && (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-mono text-[#20808d] bg-[#20808d]/10 border border-[#20808d]/30 px-1.5 py-0.5 rounded">
-                                  <Gauge className="h-3 w-3" />
-                                  {evt.velocity.toFixed(1)} km/h
-                                </span>
+                    return (
+                      <div
+                        key={`${evt.type}-${evt.id}`}
+                        className="group flex items-center justify-between rounded-lg border border-[#e7e5e0] bg-[#fdfbfa] p-2.5 transition-all hover:border-[#d6d3cc] hover:bg-[#f5f4ef]"
+                      >
+                        {/* Left: Event Type & Badge */}
+                        <div className="flex items-center gap-3">
+                          {evt.type === "crash" && (
+                            <div
+                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border ${
+                                isFinalResolved
+                                  ? "bg-[#4f9d69]/10 text-[#4f9d69] border-[#4f9d69]/30"
+                                  : isInProgress
+                                  ? "bg-[#c08a2d]/10 text-[#c08a2d] border-[#c08a2d]/30"
+                                  : "bg-[#c25450]/10 text-[#c25450] border-[#c25450]/30"
+                              }`}
+                            >
+                              {isFinalResolved ? (
+                                <CheckCircle2 className="h-4 w-4" />
+                              ) : isInProgress ? (
+                                <Siren className="h-4 w-4 animate-pulse" />
+                              ) : (
+                                <AlertTriangle className="h-4 w-4" />
                               )}
-                          </div>
+                            </div>
+                          )}
+                          {evt.type === "light_change" && (
+                            <div
+                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border ${
+                                evt.color === "red"
+                                  ? "bg-[#c25450]/10 text-[#c25450] border-[#c25450]/30"
+                                  : evt.color === "amber"
+                                  ? "bg-[#c08a2d]/10 text-[#c08a2d] border-[#c08a2d]/30"
+                                  : "bg-[#4f9d69]/10 text-[#4f9d69] border-[#4f9d69]/30"
+                              }`}
+                            >
+                              <Circle className="h-4 w-4 fill-current" />
+                            </div>
+                          )}
+                          {evt.type === "illegal_crossing" && (
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[#8c6ba8]/10 text-[#8c6ba8] border border-[#8c6ba8]/30">
+                              <Footprints className="h-4 w-4" />
+                            </div>
+                          )}
+                          {evt.type === "object_detected" && (
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[#20808d]/10 text-[#20808d] border border-[#20808d]/30">
+                              <Radio className="h-4 w-4" />
+                            </div>
+                          )}
 
-                          <div className="flex items-center gap-2 text-[11px] text-[#6b675f] mt-0.5">
-                            <span>{formatDateTime(evt.timestamp)}</span>
-                            <span>•</span>
-                            <span className="text-[#8a857c]">
-                              {formatRelativeTime(evt.timestamp)}
-                            </span>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold capitalize text-[#1f1915]">
+                                {evt.type.replace("_", " ")}
+                              </span>
+
+                              {evt.type === "crash" && (
+                                <>
+                                  {isFinalResolved ? (
+                                    <Badge
+                                      variant="outline"
+                                      className="text-[10px] font-semibold border-emerald-300 text-emerald-800 bg-emerald-50"
+                                    >
+                                      Resolved
+                                    </Badge>
+                                  ) : isInProgress ? (
+                                    <div className="flex items-center gap-1.5">
+                                      <Badge
+                                        variant="outline"
+                                        className="text-[10px] font-semibold border-amber-300 text-amber-800 bg-amber-50 gap-1"
+                                      >
+                                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping" />
+                                        In Progress
+                                      </Badge>
+                                      {crash?.dispatched_units && crash.dispatched_units.length > 0 && (
+                                        <div className="flex items-center gap-1">
+                                          {crash.dispatched_units.map((u) => (
+                                            <span
+                                              key={u}
+                                              className="text-[9px] font-mono font-bold text-stone-600 bg-stone-100 px-1 py-0.2 rounded border border-stone-200"
+                                              title={EMERGENCY_UNIT_CONFIG[u as EmergencyUnit]?.name || String(u)}
+                                            >
+                                              {EMERGENCY_UNIT_CONFIG[u as EmergencyUnit]?.code || u}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <Badge variant="destructive" className="text-[10px] font-semibold">
+                                      Critical
+                                    </Badge>
+                                  )}
+                                </>
+                              )}
+
+                              {evt.type === "light_change" && (
+                                <Badge
+                                  variant={
+                                    evt.color === "green"
+                                      ? "success"
+                                      : evt.color === "amber"
+                                      ? "warning"
+                                      : "danger"
+                                  }
+                                  className="text-[10px] capitalize font-semibold"
+                                >
+                                  {evt.color}
+                                </Badge>
+                              )}
+
+                              {evt.type === "illegal_crossing" && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] capitalize border-[#8c6ba8]/30 text-[#6f5090] bg-[#8c6ba8]/10"
+                                >
+                                  {evt.entity_type}
+                                </Badge>
+                              )}
+
+                              {evt.type === "object_detected" && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] capitalize border-[#20808d]/30 text-[#20808d] bg-[#20808d]/10"
+                                >
+                                  {evt.entity_type}
+                                </Badge>
+                              )}
+
+                              {evt.type === "object_detected" &&
+                                evt.velocity !== null &&
+                                evt.velocity !== undefined && (
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-mono text-[#20808d] bg-[#20808d]/10 border border-[#20808d]/30 px-1.5 py-0.5 rounded">
+                                    <Gauge className="h-3 w-3" />
+                                    {evt.velocity.toFixed(1)} km/h
+                                  </span>
+                                )}
+                            </div>
+
+                            <div className="flex items-center gap-2 text-[11px] text-[#6b675f] mt-0.5">
+                              <span>{formatDateTime(evt.timestamp)}</span>
+                              <span>•</span>
+                              <span className="text-[#8a857c]">
+                                {formatRelativeTime(evt.timestamp)}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Right: Actions / Buttons */}
-                      <div>
-                        {evt.type === "crash" && (
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() =>
-                              setActivePhoto({
-                                photoId: (evt as CrashEvent).photo_id,
-                                timestamp: evt.timestamp,
-                              })
-                            }
-                            className="h-7 gap-1.5 text-xs"
-                          >
-                            <ImageIcon className="h-3.5 w-3.5" />
-                            View Photo
-                          </Button>
-                        )}
+                        {/* Right: Actions / Buttons */}
+                        <div className="flex items-center gap-2">
+                          {evt.type === "crash" && (
+                            <>
+                              {/* Hide Dispatch button when already dispatched/resolved */}
+                              {!isResolved && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setDispatchingCrash(crash!)}
+                                  className="h-7 gap-1.5 text-xs border-[#c25450]/40 text-[#a8423e] hover:bg-[#c25450]/10 hover:text-[#903430]"
+                                >
+                                  <Siren className="h-3.5 w-3.5" />
+                                  Dispatch EMS
+                                </Button>
+                              )}
+
+                              {/* View Photo button: destructive until final resolved after 15m */}
+                              <Button
+                                size="sm"
+                                variant={isFinalResolved ? "outline" : "destructive"}
+                                onClick={() =>
+                                  setActivePhoto({
+                                    photoId: crash!.photo_id,
+                                    timestamp: crash!.timestamp,
+                                  })
+                                }
+                                className={`h-7 gap-1.5 text-xs ${
+                                  isFinalResolved
+                                    ? "border-[#d4d1ca] text-[#1f1915] hover:bg-stone-100"
+                                    : ""
+                                }`}
+                              >
+                                <ImageIcon className="h-3.5 w-3.5" />
+                                View Photo
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -531,6 +637,19 @@ export function CameraEventsPane({
           photoId={activePhoto.photoId}
           timestamp={activePhoto.timestamp}
           cameraName={camera.name}
+        />
+      )}
+
+      {/* Dispatch EMS Dialog */}
+      {dispatchingCrash && (
+        <DispatchEmsDialog
+          isOpen={!!dispatchingCrash}
+          onClose={() => setDispatchingCrash(null)}
+          crashEvent={dispatchingCrash}
+          cameraName={camera.name}
+          onDispatched={() => {
+            onRefresh();
+          }}
         />
       )}
     </>

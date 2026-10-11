@@ -1,4 +1,4 @@
-import { Camera, CameraEventsResponse, CameraEvent, CameraState } from "./types";
+import { Camera, CameraEventsResponse, CameraEvent, CameraState, CrashEvent } from "./types";
 
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -251,20 +251,68 @@ export async function updateCamera(
       ? `/cameras/${cameraId}`
       : `${API_BASE_URL}/cameras/${cameraId}`;
 
+  const bodyPayload: Record<string, unknown> = { ...payload };
+  if (payload.latitude !== undefined && payload.longitude !== undefined) {
+    bodyPayload.location = [payload.latitude, payload.longitude];
+  }
+
   const res = await fetch(url, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(bodyPayload),
   });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || err.error || `HTTP ${res.status}`);
+    let msg = `HTTP ${res.status}`;
+    if (typeof err.detail === "string") {
+      msg = err.detail;
+    } else if (Array.isArray(err.detail)) {
+      msg = err.detail.map((d: { msg?: string }) => d.msg || JSON.stringify(d)).join(", ");
+    } else if (typeof err.error === "string") {
+      msg = err.error;
+    }
+    throw new Error(msg);
   }
 
   const data = await res.json();
   return { camera: data.camera };
+}
+
+export async function dispatchEmsUnits(
+  crashId: number | string,
+  dispatchedUnits: number[]
+): Promise<{ crash: CrashEvent }> {
+  const url =
+    typeof window !== "undefined"
+      ? `/crashes/${crashId}/resolve`
+      : `${API_BASE_URL}/crashes/${crashId}/resolve`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ dispatched_units: dispatchedUnits }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    let msg = `HTTP ${res.status}`;
+    if (typeof err.detail === "string") {
+      msg = err.detail;
+    } else if (Array.isArray(err.detail)) {
+      msg = err.detail.map((d: { msg?: string }) => d.msg || JSON.stringify(d)).join(", ");
+    } else if (typeof err.error === "string") {
+      msg = err.error;
+    }
+    throw new Error(msg);
+  }
+
+  const data = await res.json();
+  return { crash: data.crash };
 }

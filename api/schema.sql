@@ -29,6 +29,10 @@ CREATE TABLE IF NOT EXISTS CRASH (
     -- SQLite INTEGER is signed 64-bit, sufficient for Unix epoch milliseconds.
     timestamp INTEGER NOT NULL,
     CAMERA_id TEXT NOT NULL,
+    resolved INTEGER NOT NULL DEFAULT 0,
+    resolved_at INTEGER,
+    resolved_by TEXT,
+    dispatched_units TEXT,
     PRIMARY KEY (id),
     FOREIGN KEY (CAMERA_id) REFERENCES CAMERA (id)
         ON DELETE NO ACTION
